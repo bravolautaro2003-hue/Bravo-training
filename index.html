@@ -8,7 +8,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- React & ReactDOM (Enlaces más estables para celular) -->
+    <!-- React & ReactDOM -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
     <!-- Babel -->
@@ -16,86 +16,107 @@
     <!-- Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { 500: '#ef4444', 600: '#dc2626' }, // Rojo Bravo
+                        dark: { 900: '#0a0a0a', 800: '#171717', 700: '#262626' }
+                    }
+                }
+            }
+        }
+    </script>
     <style>
-        body { -webkit-tap-highlight-color: transparent; background-color: #000; color: #fff; }
-        .app-container { max-width: 480px; margin: 0 auto; min-height: 100vh; background-color: #111827; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+        body { -webkit-tap-highlight-color: transparent; background-color: #000; color: #fff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        .app-container { max-width: 480px; margin: 0 auto; min-height: 100vh; background-color: #0a0a0a; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
 <body class="antialiased">
-    <div id="root">
-        <div style="padding: 30px; text-align: center; margin-top: 30%;">
-            <i class="fa-solid fa-dumbbell" style="font-size: 3rem; color: #3b82f6; margin-bottom: 20px;"></i>
-            <h2 style="font-size: 1.5rem; font-weight: bold;">Cargando plataforma...</h2>
-        </div>
-    </div>
+    <div id="root"><div style="padding: 30px; text-align: center; margin-top: 30%;"><h2 style="font-size: 1.5rem; color: #ef4444;">Cargando plataforma...</h2></div></div>
 
-    <!-- Detector de errores en pantalla -->
     <script>
-        window.onerror = function(msg) {
-            document.getElementById('root').innerHTML = '<div style="background:#7f1d1d; color:white; padding:20px; margin:20px; border-radius:10px;"><b>Error detectado:</b><br>' + msg + '<br><br>Mandame captura de esto.</div>';
-        };
-        const oldError = console.error;
-        console.error = function(...args) {
-            if (args[0] && args[0].toString().includes("Warning")) return;
-            document.getElementById('root').innerHTML = '<div style="background:#7f1d1d; color:white; padding:20px; margin:20px; border-radius:10px;"><b>Fallo en el código:</b><br>' + args.join(' ') + '<br><br>Mandame captura de esto.</div>';
-            oldError.apply(console, args);
-        };
+        window.onerror = function(msg) { document.getElementById('root').innerHTML = '<div style="background:#7f1d1d; color:white; padding:20px; margin:20px; border-radius:10px;"><b>Error:</b><br>' + msg + '</div>'; };
     </script>
 
     <script type="text/babel">
         const { useState, useEffect } = React;
-
         const SUPABASE_URL = 'https://pncnnvbdquzyvcnuethx.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_5WHz-KSuu5BaV08EGXJJmg_dkVOUJwy';
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+        // --- COMPONENTE: EDICIÓN DE EJERCICIO (PROFESOR) ---
         function ExerciseRow({ exercise, onUpdate, onDelete }) {
             const [localEx, setLocalEx] = useState(exercise);
             const handleChange = (field, value) => setLocalEx(prev => ({ ...prev, [field]: value }));
             const handleBlur = () => onUpdate(localEx);
 
             return (
-                <div className="bg-gray-900 p-3 rounded-lg border border-gray-700 flex flex-col gap-2 relative">
-                    <button onClick={onDelete} className="absolute top-2 right-2 text-red-500 bg-red-500/10 w-8 h-8 rounded flex items-center justify-center">
-                        <i className="fa-solid fa-trash text-sm"></i>
-                    </button>
-                    <input className="bg-transparent font-bold text-lg border-b border-gray-700 focus:border-blue-500 outline-none pb-1 w-5/6" value={localEx.name} onChange={(e) => handleChange('name', e.target.value)} onBlur={handleBlur} placeholder="Nombre del ejercicio" />
-                    <div className="flex gap-2 text-sm mt-1">
-                        <div className="flex-1">
-                            <label className="text-gray-500 text-xs uppercase font-bold">Series</label>
-                            <input className="w-full bg-gray-800 p-2 rounded text-center" value={localEx.sets} onChange={(e) => handleChange('sets', e.target.value)} onBlur={handleBlur} placeholder="Ej: 4" />
-                        </div>
-                        <div className="flex-1">
-                            <label className="text-gray-500 text-xs uppercase font-bold">Reps</label>
-                            <input className="w-full bg-gray-800 p-2 rounded text-center" value={localEx.reps} onChange={(e) => handleChange('reps', e.target.value)} onBlur={handleBlur} placeholder="Ej: 8-10" />
-                        </div>
-                        <div className="flex-1">
-                            <label className="text-gray-500 text-xs uppercase font-bold">RIR</label>
-                            <input className="w-full bg-gray-800 p-2 rounded text-center" value={localEx.rir} onChange={(e) => handleChange('rir', e.target.value)} onBlur={handleBlur} placeholder="Ej: 2" />
-                        </div>
+                <div className="bg-dark-800 p-4 rounded-2xl border border-dark-700 mb-4">
+                    <div className="flex justify-between items-start mb-3">
+                        <input className="bg-transparent font-bold text-lg outline-none w-2/3 text-white placeholder-gray-500" value={localEx.name} onChange={(e) => handleChange('name', e.target.value)} onBlur={handleBlur} placeholder="Nombre del ejercicio" />
+                        <button onClick={onDelete} className="bg-dark-700 text-brand-500 p-2 rounded-lg text-sm"><i className="fa-solid fa-xmark"></i></button>
+                    </div>
+                    <div className="flex gap-2 text-sm text-gray-400 items-center">
+                        <input className="w-12 bg-transparent outline-none border-b border-dark-700 text-center text-white" value={localEx.sets} onChange={(e) => handleChange('sets', e.target.value)} onBlur={handleBlur} /> series
+                        <input className="w-16 bg-transparent outline-none border-b border-dark-700 text-center text-white ml-2" value={localEx.reps} onChange={(e) => handleChange('reps', e.target.value)} onBlur={handleBlur} /> reps
+                        <span className="ml-2">RIR</span><input className="w-8 bg-transparent outline-none border-b border-dark-700 text-center text-white" value={localEx.rir} onChange={(e) => handleChange('rir', e.target.value)} onBlur={handleBlur} />
                     </div>
                 </div>
             );
         }
 
+        // --- COMPONENTE: EJECUCIÓN DE EJERCICIO (ALUMNO) ---
         function ClientExerciseRow({ exercise, progressData, onSaveProgress }) {
-            const [localProg, setLocalProg] = useState({ weight: progressData?.weight || '', repsDone: progressData?.repsDone || '' });
-            const handleBlur = () => onSaveProgress(localProg.weight, localProg.repsDone);
+            const setsCount = parseInt(exercise.sets) || 1;
+            const [localSets, setLocalSets] = useState(() => {
+                const saved = progressData?.sets || [];
+                return Array.from({length: setsCount}, (_, i) => ({
+                    weight: saved[i]?.weight || '', 
+                    reps: saved[i]?.reps || '',
+                    done: saved[i]?.done || false
+                }));
+            });
+
+            const updateSet = (index, field, value) => {
+                const newSets = [...localSets];
+                newSets[index][field] = value;
+                setLocalSets(newSets);
+                onSaveProgress(newSets);
+            };
 
             return (
-                <div className="bg-gray-800 p-4 rounded-xl space-y-3 mb-4 shadow-lg border border-gray-700">
-                    <div className="border-b border-gray-700 pb-3">
-                        <h4 className="font-bold text-lg text-white">{exercise.name}</h4>
-                        <p className="text-sm text-gray-400 mt-2 flex gap-2">
-                            <span className="bg-gray-700 px-2 py-1 rounded text-xs font-bold">{exercise.sets} Series</span>
-                            <span className="bg-gray-700 px-2 py-1 rounded text-xs font-bold">{exercise.reps} Reps</span>
-                            <span className="bg-gray-700 px-2 py-1 rounded text-xs font-bold text-blue-400">RIR {exercise.rir}</span>
-                        </p>
+                <div className="bg-dark-800 p-5 rounded-2xl mb-4 border border-dark-700">
+                    <h4 className="font-bold text-xl text-white mb-2">{exercise.name}</h4>
+                    <p className="text-sm text-gray-400 mb-4">
+                        Meta <strong className="text-white">{exercise.reps} reps</strong> &nbsp;&nbsp; RIR <strong className="text-white">{exercise.rir}</strong>
+                    </p>
+                    
+                    <div className="grid grid-cols-[auto_1fr_1fr_auto] gap-3 mb-2 text-xs text-gray-500 font-bold uppercase tracking-wider">
+                        <span>Tipo</span><span>KG</span><span>Reps</span><span></span>
                     </div>
-                    <div className="flex gap-2">
-                        <input type="number" className="flex-1 bg-gray-900 border border-gray-700 p-3 rounded-lg text-white placeholder-gray-500" placeholder="Kilos levantados" value={localProg.weight} onChange={(e) => setLocalProg(prev => ({...prev, weight: e.target.value}))} onBlur={handleBlur} />
-                        <input type="number" className="flex-1 bg-gray-900 border border-gray-700 p-3 rounded-lg text-white placeholder-gray-500" placeholder="Reps hechas" value={localProg.repsDone} onChange={(e) => setLocalProg(prev => ({...prev, repsDone: e.target.value}))} onBlur={handleBlur} />
-                    </div>
+                    
+                    {localSets.map((set, i) => (
+                        <div key={i} className={`grid grid-cols-[auto_1fr_1fr_auto] gap-3 items-center mb-2 p-2 rounded-lg ${set.done ? 'bg-brand-500/10 border border-brand-500/20' : 'bg-dark-700/50'}`}>
+                            <span className="w-6 h-6 flex items-center justify-center bg-dark-900 rounded font-bold text-xs">{i + 1}</span>
+                            <div className="relative">
+                                <input type="number" className="w-full bg-dark-900 rounded-lg p-2 text-white outline-none text-center" placeholder="-" value={set.weight} onChange={(e) => updateSet(i, 'weight', e.target.value)} />
+                                <span className="absolute right-2 top-2 text-xs text-gray-500">kg</span>
+                            </div>
+                            <div className="relative">
+                                <input type="number" className="w-full bg-dark-900 rounded-lg p-2 text-white outline-none text-center" placeholder="-" value={set.reps} onChange={(e) => updateSet(i, 'reps', e.target.value)} />
+                            </div>
+                            <button onClick={() => updateSet(i, 'done', !set.done)} className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${set.done ? 'bg-brand-500 text-white' : 'bg-dark-900 border border-dark-600 text-dark-600'}`}>
+                                <i className="fa-solid fa-check"></i>
+                            </button>
+                        </div>
+                    ))}
+                    <button className="mt-3 text-sm text-gray-400 font-bold flex items-center gap-2 px-2 py-1 rounded hover:bg-dark-700">
+                        <i className="fa-solid fa-plus"></i> Añadir serie
+                    </button>
                 </div>
             );
         }
@@ -107,25 +128,20 @@
             const [currentUser, setCurrentUser] = useState(null);
             const [pinInput, setPinInput] = useState('');
             const [newClientName, setNewClientName] = useState('');
-            const [expandedClient, setExpandedClient] = useState(null);
+            const [activeClient, setActiveClient] = useState(null);
+            const [activeDayId, setActiveDayId] = useState(null); // Para las pestañas de días
 
             useEffect(() => {
                 fetchData();
-                const channel = supabase.channel('realtime_sync')
-                    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'bravo_state' }, (payload) => {
-                        if(payload && payload.new) setGlobalData(payload.new.data);
-                    }).subscribe();
+                const channel = supabase.channel('realtime_sync').on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'bravo_state' }, (payload) => {
+                    if(payload && payload.new) setGlobalData(payload.new.data);
+                }).subscribe();
                 return () => { supabase.removeChannel(channel); };
             }, []);
 
             const fetchData = async () => {
-                try {
-                    const { data, error } = await supabase.from('bravo_state').select('data').eq('id', 'main').single();
-                    if (error) throw error;
-                    if (data) setGlobalData(data.data);
-                } catch (e) {
-                    console.error("Error al cargar datos Supabase:", e.message);
-                }
+                const { data } = await supabase.from('bravo_state').select('data').eq('id', 'main').single();
+                if (data) setGlobalData(data.data);
                 setLoading(false);
             };
 
@@ -135,22 +151,23 @@
             };
 
             const handleLogin = () => {
-                if (!globalData) { alert("Base de datos no encontrada."); return; }
-                if (pinInput === globalData.profesorPin) {
-                    setView('profesor');
-                } else {
+                if (pinInput === globalData.profesorPin) { setView('profesor'); } 
+                else {
                     const client = globalData.clients?.find(c => c.pin === pinInput);
-                    if (client) { setCurrentUser(client); setView('cliente'); } 
-                    else { alert('PIN incorrecto.'); }
+                    if (client) { 
+                        setCurrentUser(client); 
+                        if(globalData.routines[client.id]?.length > 0) setActiveDayId(globalData.routines[client.id][0].id);
+                        setView('cliente'); 
+                    } else { alert('PIN incorrecto.'); }
                 }
                 setPinInput('');
             };
 
+            // FUNCIONES PROFESOR
             const addClient = () => {
                 if (!newClientName.trim()) return;
                 const newData = JSON.parse(JSON.stringify(globalData));
-                const pin = Math.floor(1000 + Math.random() * 9000).toString();
-                const newClient = { id: Date.now().toString(), name: newClientName, pin };
+                const newClient = { id: Date.now().toString(), name: newClientName, pin: Math.floor(1000 + Math.random() * 9000).toString() };
                 if(!newData.clients) newData.clients = [];
                 if(!newData.routines) newData.routines = {};
                 if(!newData.progress) newData.progress = {};
@@ -162,14 +179,16 @@
 
             const addDay = (clientId) => {
                 const newData = JSON.parse(JSON.stringify(globalData));
-                newData.routines[clientId].push({ id: Date.now().toString(), name: "Día " + (newData.routines[clientId].length + 1), exercises: [] });
+                const newId = Date.now().toString();
+                newData.routines[clientId].push({ id: newId, name: "Día " + (newData.routines[clientId].length + 1), exercises: [] });
                 saveData(newData);
+                setActiveDayId(newId);
             };
 
             const addExercise = (clientId, dayId) => {
                 const newData = JSON.parse(JSON.stringify(globalData));
                 const day = newData.routines[clientId].find(d => d.id === dayId);
-                day.exercises.push({ id: Date.now().toString(), name: 'Nuevo Ejercicio', sets: '4', reps: '10', rir: '2' });
+                day.exercises.push({ id: Date.now().toString(), name: 'Nuevo Ejercicio', sets: '3', reps: '10', rir: '2' });
                 saveData(newData);
             };
 
@@ -188,102 +207,108 @@
                 saveData(newData);
             };
 
-            const saveProgress = (exerciseId, weight, repsDone) => {
+            // FUNCIONES ALUMNO
+            const saveClientProgress = (exerciseId, setsArray) => {
                 const newData = JSON.parse(JSON.stringify(globalData));
                 if (!newData.progress[currentUser.id]) newData.progress[currentUser.id] = {};
-                newData.progress[currentUser.id][exerciseId] = { weight, repsDone };
+                if (!newData.progress[currentUser.id][exerciseId]) newData.progress[currentUser.id][exerciseId] = {};
+                newData.progress[currentUser.id][exerciseId].sets = setsArray;
                 saveData(newData);
             };
 
-            if (loading) return <div className="app-container flex items-center justify-center h-screen"><p className="text-blue-500 font-bold animate-pulse text-xl">Conectando base de datos...</p></div>;
+            if (loading) return <div className="app-container flex justify-center items-center"><i className="fa-solid fa-spinner fa-spin text-brand-500 text-3xl"></i></div>;
 
+            // --- PANTALLA LOGIN ---
             if (view === 'home') return (
-                <div className="app-container flex flex-col justify-center p-6 space-y-10">
+                <div className="app-container flex flex-col justify-center p-6 space-y-8">
                     <div className="text-center space-y-2">
-                        <i className="fa-solid fa-dumbbell text-5xl text-blue-600 mb-4"></i>
-                        <h1 className="text-4xl font-black tracking-tighter uppercase">Bravo <span className="text-blue-600">Training</span></h1>
-                        <p className="text-gray-400 text-sm">Plataforma de periodización</p>
+                        <i className="fa-solid fa-dumbbell text-5xl text-brand-500 mb-2"></i>
+                        <h1 className="text-4xl font-black tracking-tighter uppercase">Bravo <span className="text-brand-500">Training</span></h1>
                     </div>
-                    <div className="bg-gray-800 p-6 rounded-2xl border border-gray-700 shadow-xl">
-                        <label className="text-xs uppercase font-bold text-gray-400 block mb-2">Ingresar con PIN</label>
-                        <input type="password" className="w-full bg-gray-900 border border-gray-600 p-4 rounded-xl text-center text-2xl tracking-[0.5em] focus:border-blue-500 outline-none mb-4" placeholder="****" value={pinInput} onChange={(e) => setPinInput(e.target.value)} />
-                        <button onClick={handleLogin} className="w-full bg-blue-600 hover:bg-blue-700 py-4 rounded-xl font-bold text-lg transition shadow-lg shadow-blue-600/30">Entrar</button>
+                    <div className="bg-dark-800 p-6 rounded-3xl border border-dark-700">
+                        <input type="password" placeholder="PIN" className="w-full bg-dark-900 border border-dark-600 p-4 rounded-xl text-center text-2xl tracking-[0.5em] focus:border-brand-500 outline-none mb-4" value={pinInput} onChange={(e) => setPinInput(e.target.value)} />
+                        <button onClick={handleLogin} className="w-full bg-brand-600 py-4 rounded-xl font-bold text-lg shadow-lg shadow-brand-500/20">Ingresar</button>
                     </div>
                 </div>
             );
 
-            if (view === 'profesor') return (
-                <div className="app-container flex flex-col">
-                    <header className="bg-gray-950 p-4 border-b border-gray-800 flex justify-between items-center sticky top-0 z-10">
-                        <h2 className="font-bold text-lg flex items-center gap-2 text-blue-500"><i className="fa-solid fa-user-gear"></i> Panel Profesor</h2>
-                        <button onClick={() => setView('home')} className="text-gray-400 p-2"><i className="fa-solid fa-arrow-right-from-bracket"></i></button>
-                    </header>
-                    <div className="p-4 space-y-6">
-                        <div className="bg-blue-900/20 border border-blue-900 p-4 rounded-xl">
-                            <h3 className="text-sm font-bold text-blue-400 mb-3 uppercase tracking-wide">Nuevo Alumno</h3>
-                            <div className="flex gap-2">
-                                <input className="flex-1 bg-gray-800 border border-gray-700 p-3 rounded-lg outline-none focus:border-blue-500" placeholder="Nombre completo" value={newClientName} onChange={(e) => setNewClientName(e.target.value)} />
-                                <button onClick={addClient} className="bg-blue-600 px-5 rounded-lg font-bold"><i className="fa-solid fa-plus"></i></button>
+            // --- PANTALLA PROFESOR (Rediseño) ---
+            if (view === 'profesor') {
+                if(activeClient) {
+                    const clientRoutines = globalData.routines[activeClient.id] || [];
+                    const currentDay = clientRoutines.find(d => d.id === activeDayId) || clientRoutines[0];
+
+                    return (
+                        <div className="app-container flex flex-col pb-20">
+                            <header className="p-4 flex items-center justify-between border-b border-dark-800">
+                                <button onClick={() => {setActiveClient(null); setActiveDayId(null);}} className="text-gray-400"><i className="fa-solid fa-arrow-left"></i></button>
+                                <h2 className="font-bold text-xl">{activeClient.name}</h2>
+                                <span className="bg-dark-800 text-xs px-2 py-1 rounded text-gray-400 font-mono">PIN {activeClient.pin}</span>
+                            </header>
+
+                            <div className="p-4 space-y-6">
+                                <div className="flex gap-2">
+                                    <button className="bg-brand-500 text-white px-5 py-2 rounded-full font-bold text-sm">Rutina</button>
+                                    <button className="bg-dark-800 text-gray-400 px-5 py-2 rounded-full font-bold text-sm">Mesociclos</button>
+                                </div>
+
+                                <div className="flex gap-2 overflow-x-auto hide-scrollbar">
+                                    {clientRoutines.map(day => (
+                                        <button key={day.id} onClick={() => setActiveDayId(day.id)} className={`whitespace-nowrap px-5 py-2 rounded-full font-bold text-sm ${activeDayId === day.id ? 'bg-brand-500 text-white' : 'bg-dark-800 text-gray-400'}`}>{day.name}</button>
+                                    ))}
+                                    <button onClick={() => addDay(activeClient.id)} className="whitespace-nowrap bg-dark-800 text-gray-400 px-4 py-2 rounded-full font-bold text-sm border border-dark-700">+ Día</button>
+                                </div>
+
+                                {currentDay && (
+                                    <div className="bg-dark-900 border border-dark-800 rounded-3xl p-4">
+                                        <div className="flex justify-between items-center mb-6 border-b border-dark-700 pb-2">
+                                            <input className="font-bold text-xl bg-transparent outline-none" value={currentDay.name} onChange={(e) => {
+                                                const newData = JSON.parse(JSON.stringify(globalData));
+                                                newData.routines[activeClient.id].find(d => d.id === currentDay.id).name = e.target.value;
+                                                saveData(newData);
+                                            }}/>
+                                            <button className="text-brand-500 text-sm font-bold">Borrar día</button>
+                                        </div>
+
+                                        {currentDay.exercises.map(ex => (
+                                            <ExerciseRow key={ex.id} exercise={ex} onUpdate={(u) => updateExercise(activeClient.id, currentDay.id, u)} onDelete={() => deleteExercise(activeClient.id, currentDay.id, ex.id)} />
+                                        ))}
+
+                                        <button onClick={() => addExercise(activeClient.id, currentDay.id)} className="w-full bg-dark-800 py-4 rounded-xl font-bold text-sm mt-2 border border-dark-700">+ Agregar ejercicio</button>
+                                    </div>
+                                )}
                             </div>
                         </div>
+                    );
+                }
 
-                        <div className="space-y-4 pb-20">
+                return (
+                    <div className="app-container flex flex-col">
+                        <header className="p-4 flex justify-between items-center border-b border-dark-800">
+                            <h2 className="font-bold text-xl text-brand-500"><i className="fa-solid fa-user-gear"></i> Panel</h2>
+                            <button onClick={() => setView('home')} className="text-gray-400"><i className="fa-solid fa-arrow-right-from-bracket"></i></button>
+                        </header>
+                        <div className="p-4 space-y-4">
+                            <div className="flex gap-2 bg-dark-800 p-2 rounded-full border border-dark-700">
+                                <input className="flex-1 bg-transparent px-4 outline-none text-sm" placeholder="Nombre del alumno..." value={newClientName} onChange={(e) => setNewClientName(e.target.value)} />
+                                <button onClick={addClient} className="bg-brand-600 rounded-full w-8 h-8 flex items-center justify-center"><i className="fa-solid fa-plus"></i></button>
+                            </div>
+                            
                             {globalData.clients?.map(client => (
-                                <div key={client.id} className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
-                                    <div className="p-4 flex justify-between items-center cursor-pointer bg-gray-800 hover:bg-gray-750" onClick={() => setExpandedClient(expandedClient === client.id ? null : client.id)}>
-                                        <div>
-                                            <p className="font-bold text-lg">{client.name}</p>
-                                            <p className="text-xs text-blue-400 mt-1 font-mono">PIN: {client.pin}</p>
-                                        </div>
-                                        <i className={"fa-solid text-gray-500 fa-chevron-" + (expandedClient === client.id ? 'up' : 'down')}></i>
-                                    </div>
-                                    {expandedClient === client.id && (
-                                        <div className="p-4 bg-gray-950 border-t border-gray-700 space-y-6">
-                                            {globalData.routines[client.id]?.map(day => (
-                                                <div className="space-y-3" key={day.id}>
-                                                    <h4 className="font-bold text-blue-500 border-b border-gray-800 pb-2">{day.name}</h4>
-                                                    {day.exercises.map(ex => (
-                                                        <ExerciseRow key={ex.id} exercise={ex} onUpdate={(updatedData) => updateExercise(client.id, day.id, updatedData)} onDelete={() => deleteExercise(client.id, day.id, ex.id)} />
-                                                    ))}
-                                                    <button onClick={() => addExercise(client.id, day.id)} className="w-full py-3 border border-dashed border-gray-600 rounded-lg text-gray-400 text-sm font-bold hover:bg-gray-800 transition"><i className="fa-solid fa-plus mr-2"></i> Agregar Ejercicio</button>
-                                                </div>
-                                            ))}
-                                            <button onClick={() => addDay(client.id)} className="w-full bg-blue-600 py-3 rounded-lg font-bold shadow-lg mt-4">Crear Día de Entrenamiento</button>
-                                        </div>
-                                    )}
+                                <div key={client.id} onClick={() => { setActiveClient(client); if(globalData.routines[client.id]?.[0]) setActiveDayId(globalData.routines[client.id][0].id); }} className="bg-dark-800 p-4 rounded-2xl flex justify-between items-center cursor-pointer border border-dark-700">
+                                    <p className="font-bold text-lg">{client.name}</p>
+                                    <i className="fa-solid fa-chevron-right text-gray-600"></i>
                                 </div>
                             ))}
                         </div>
                     </div>
-                </div>
-            );
+                );
+            }
 
-            if (view === 'cliente') return (
-                <div className="app-container flex flex-col">
-                    <header className="bg-gray-950 p-4 border-b border-gray-800 flex justify-between items-center sticky top-0 z-10">
-                        <h2 className="font-bold text-lg flex items-center gap-2 text-blue-500"><i className="fa-solid fa-clipboard-list"></i> Mi Rutina</h2>
-                        <div className="flex items-center gap-4">
-                            <span className="text-sm font-bold">{currentUser.name}</span>
-                            <button onClick={() => setView('home')} className="text-red-400 p-2"><i className="fa-solid fa-arrow-right-from-bracket"></i></button>
-                        </div>
-                    </header>
-                    <div className="p-4 space-y-8 pb-20">
-                        {globalData.routines[currentUser.id]?.length === 0 && <div className="text-center p-10 text-gray-500">Tu profe todavía no te cargó la rutina.</div>}
-                        {globalData.routines[currentUser.id]?.map(day => (
-                            <div key={day.id}>
-                                <div className="bg-blue-900/20 border border-blue-900 p-3 rounded-xl mb-4"><h3 className="font-bold text-xl text-white">{day.name}</h3></div>
-                                {day.exercises.map(ex => (
-                                    <ClientExerciseRow key={ex.id} exercise={ex} progressData={globalData.progress?.[currentUser.id]?.[ex.id]} onSaveProgress={(weight, reps) => saveProgress(ex.id, weight, reps)} />
-                                ))}
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            );
-        }
+            // --- PANTALLA ALUMNO (Rediseño) ---
+            if (view === 'cliente') {
+                const clientRoutines = globalData.routines[currentUser.id] || [];
+                const currentDay = clientRoutines.find(d => d.id === activeDayId) || clientRoutines[0];
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
-</body>
-</html>
+                return (
+                    <div className="app-container fl
