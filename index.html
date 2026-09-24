@@ -307,4 +307,77 @@
                         <div className="p-5 space-y-6">
                             <div className="flex gap-2 bg-dark-800 p-2 rounded-2xl border border-dark-700 shadow-inner">
                                 <input className="flex-1 bg-transparent px-4 outline-none text-sm text-white" placeholder="Nombre del alumno..." value={newClientName} onChange={(e) => setNewClientName(e.target.value)} />
-                                <button onClick={addCli
+                                <button onClick={addClient} className="bg-brand-600 rounded-xl w-10 h-10 flex items-center justify-center text-white"><i className="fa-solid fa-plus"></i></button>
+                            </div>
+                            
+                            <div className="space-y-3">
+                                {globalData.clients?.map(client => (
+                                    <div key={client.id} onClick={() => { setActiveClient(client); if(globalData.routines[client.id]?.[0]) setActiveDayId(globalData.routines[client.id][0].id); }} className="bg-dark-800 p-4 rounded-2xl flex justify-between items-center cursor-pointer border border-dark-700 hover:border-brand-500 transition-colors">
+                                        <div>
+                                            <p className="font-bold text-lg text-white">{client.name}</p>
+                                            <p className="text-xs text-brand-500 mt-1">PIN: {client.pin}</p>
+                                        </div>
+                                        <i className="fa-solid fa-chevron-right text-gray-600"></i>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            // --- PANTALLA ALUMNO ---
+            if (view === 'cliente') {
+                const clientRoutines = globalData.routines[currentUser.id] || [];
+                const currentDay = clientRoutines.find(d => d.id === activeDayId) || clientRoutines[0];
+
+                return (
+                    <div className="app-container flex flex-col pb-20">
+                        <header className="p-5 flex justify-between items-center bg-dark-900 sticky top-0 z-10 border-b border-dark-800">
+                            <div>
+                                <h1 className="text-2xl font-bold">Hola, <span className="text-white">{currentUser.name}</span></h1>
+                                <p className="text-gray-400 text-sm">Tu rutina</p>
+                            </div>
+                            <button onClick={() => setView('home')} className="bg-dark-800 text-gray-300 px-4 py-2 rounded-xl text-sm border border-dark-700">Salir</button>
+                        </header>
+
+                        <div className="p-5 space-y-6">
+                            <div className="bg-dark-800 p-4 rounded-2xl flex justify-between items-center border border-dark-700">
+                                <div><h3 className="font-bold text-lg text-white">Entrenamiento</h3><p className="text-brand-500 text-sm"><i className="fa-solid fa-fire"></i> Enfoque principal</p></div>
+                                <span className="bg-dark-700 text-xs px-3 py-1 rounded-full text-gray-300 font-bold border border-dark-600">Semana 1</span>
+                            </div>
+
+                            <div className="flex justify-between items-center">
+                                <span className="bg-dark-800 text-gray-300 px-4 py-2 rounded-full text-sm flex items-center gap-2 border border-dark-700"><i className="fa-regular fa-clock text-brand-500"></i> 00:00</span>
+                                <button className="bg-brand-500 text-white px-6 py-2 rounded-full font-bold text-sm shadow-lg shadow-brand-500/20">Terminar</button>
+                            </div>
+
+                            <div className="flex gap-2">
+                                <button className="bg-brand-500 text-white px-5 py-2 rounded-full font-bold text-sm shadow-md shadow-brand-500/20">Rutina</button>
+                                <button className="bg-dark-800 text-gray-400 px-5 py-2 rounded-full font-bold text-sm border border-dark-700">Progreso</button>
+                            </div>
+
+                            {clientRoutines.length > 0 && (
+                                <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-2">
+                                    {clientRoutines.map(day => (
+                                        <button key={day.id} onClick={() => setActiveDayId(day.id)} className={`whitespace-nowrap px-5 py-2 rounded-full font-bold text-sm transition-colors ${activeDayId === day.id ? 'bg-brand-500 text-white shadow-md shadow-brand-500/20' : 'bg-dark-800 text-gray-400 border border-dark-700'}`}>{day.name}</button>
+                                    ))}
+                                </div>
+                            )}
+
+                            <div>
+                                {currentDay?.exercises.map(ex => (
+                                    <ClientExerciseRow key={ex.id} exercise={ex} progressData={globalData.progress?.[currentUser.id]?.[ex.id]} onSaveProgress={(setsArray) => saveClientProgress(ex.id, setsArray)} />
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
