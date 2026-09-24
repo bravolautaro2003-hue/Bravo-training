@@ -2,17 +2,17 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bravo Training</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- React & ReactDOM -->
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <!-- React & ReactDOM (Enlaces más estables para celular) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
     <!-- Babel -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.22.10/babel.min.js"></script>
     <!-- Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
@@ -22,15 +22,25 @@
     </style>
 </head>
 <body class="antialiased">
-    
-    <!-- Este es el mensaje de seguridad. Si React carga bien, esto desaparece. -->
     <div id="root">
-        <div style="padding: 30px; text-align: center; margin-top: 30%; font-family: sans-serif;">
+        <div style="padding: 30px; text-align: center; margin-top: 30%;">
             <i class="fa-solid fa-dumbbell" style="font-size: 3rem; color: #3b82f6; margin-bottom: 20px;"></i>
-            <h2 style="font-size: 1.5rem; font-weight: bold; margin-bottom: 10px;">Cargando plataforma...</h2>
-            <p style="color: #9ca3af; font-size: 0.9rem;">Si esta pantalla no desaparece, el código se copió de forma incompleta o tu navegador tiene activo un bloqueador de anuncios.</p>
+            <h2 style="font-size: 1.5rem; font-weight: bold;">Cargando plataforma...</h2>
         </div>
     </div>
+
+    <!-- Detector de errores en pantalla -->
+    <script>
+        window.onerror = function(msg) {
+            document.getElementById('root').innerHTML = '<div style="background:#7f1d1d; color:white; padding:20px; margin:20px; border-radius:10px;"><b>Error detectado:</b><br>' + msg + '<br><br>Mandame captura de esto.</div>';
+        };
+        const oldError = console.error;
+        console.error = function(...args) {
+            if (args[0] && args[0].toString().includes("Warning")) return;
+            document.getElementById('root').innerHTML = '<div style="background:#7f1d1d; color:white; padding:20px; margin:20px; border-radius:10px;"><b>Fallo en el código:</b><br>' + args.join(' ') + '<br><br>Mandame captura de esto.</div>';
+            oldError.apply(console, args);
+        };
+    </script>
 
     <script type="text/babel">
         const { useState, useEffect } = React;
@@ -41,27 +51,15 @@
 
         function ExerciseRow({ exercise, onUpdate, onDelete }) {
             const [localEx, setLocalEx] = useState(exercise);
-
-            const handleChange = (field, value) => {
-                setLocalEx(prev => ({ ...prev, [field]: value }));
-            };
-
-            const handleBlur = () => {
-                onUpdate(localEx);
-            };
+            const handleChange = (field, value) => setLocalEx(prev => ({ ...prev, [field]: value }));
+            const handleBlur = () => onUpdate(localEx);
 
             return (
                 <div className="bg-gray-900 p-3 rounded-lg border border-gray-700 flex flex-col gap-2 relative">
                     <button onClick={onDelete} className="absolute top-2 right-2 text-red-500 bg-red-500/10 w-8 h-8 rounded flex items-center justify-center">
                         <i className="fa-solid fa-trash text-sm"></i>
                     </button>
-                    <input 
-                        className="bg-transparent font-bold text-lg border-b border-gray-700 focus:border-blue-500 outline-none pb-1 w-5/6" 
-                        value={localEx.name} 
-                        onChange={(e) => handleChange('name', e.target.value)} 
-                        onBlur={handleBlur} 
-                        placeholder="Nombre del ejercicio" 
-                    />
+                    <input className="bg-transparent font-bold text-lg border-b border-gray-700 focus:border-blue-500 outline-none pb-1 w-5/6" value={localEx.name} onChange={(e) => handleChange('name', e.target.value)} onBlur={handleBlur} placeholder="Nombre del ejercicio" />
                     <div className="flex gap-2 text-sm mt-1">
                         <div className="flex-1">
                             <label className="text-gray-500 text-xs uppercase font-bold">Series</label>
@@ -81,14 +79,8 @@
         }
 
         function ClientExerciseRow({ exercise, progressData, onSaveProgress }) {
-            const [localProg, setLocalProg] = useState({ 
-                weight: progressData?.weight || '', 
-                repsDone: progressData?.repsDone || '' 
-            });
-
-            const handleBlur = () => {
-                onSaveProgress(localProg.weight, localProg.repsDone);
-            };
+            const [localProg, setLocalProg] = useState({ weight: progressData?.weight || '', repsDone: progressData?.repsDone || '' });
+            const handleBlur = () => onSaveProgress(localProg.weight, localProg.repsDone);
 
             return (
                 <div className="bg-gray-800 p-4 rounded-xl space-y-3 mb-4 shadow-lg border border-gray-700">
@@ -101,22 +93,8 @@
                         </p>
                     </div>
                     <div className="flex gap-2">
-                        <input 
-                            type="number" 
-                            className="flex-1 bg-gray-900 border border-gray-700 p-3 rounded-lg text-white placeholder-gray-500" 
-                            placeholder="Kilos levantados"
-                            value={localProg.weight}
-                            onChange={(e) => setLocalProg(prev => ({...prev, weight: e.target.value}))}
-                            onBlur={handleBlur}
-                        />
-                        <input 
-                            type="number" 
-                            className="flex-1 bg-gray-900 border border-gray-700 p-3 rounded-lg text-white placeholder-gray-500" 
-                            placeholder="Reps hechas"
-                            value={localProg.repsDone}
-                            onChange={(e) => setLocalProg(prev => ({...prev, repsDone: e.target.value}))}
-                            onBlur={handleBlur}
-                        />
+                        <input type="number" className="flex-1 bg-gray-900 border border-gray-700 p-3 rounded-lg text-white placeholder-gray-500" placeholder="Kilos levantados" value={localProg.weight} onChange={(e) => setLocalProg(prev => ({...prev, weight: e.target.value}))} onBlur={handleBlur} />
+                        <input type="number" className="flex-1 bg-gray-900 border border-gray-700 p-3 rounded-lg text-white placeholder-gray-500" placeholder="Reps hechas" value={localProg.repsDone} onChange={(e) => setLocalProg(prev => ({...prev, repsDone: e.target.value}))} onBlur={handleBlur} />
                     </div>
                 </div>
             );
@@ -135,16 +113,19 @@
                 fetchData();
                 const channel = supabase.channel('realtime_sync')
                     .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'bravo_state' }, (payload) => {
-                        setGlobalData(payload.new.data);
-                    })
-                    .subscribe();
-
+                        if(payload && payload.new) setGlobalData(payload.new.data);
+                    }).subscribe();
                 return () => { supabase.removeChannel(channel); };
             }, []);
 
             const fetchData = async () => {
-                const { data, error } = await supabase.from('bravo_state').select('data').eq('id', 'main').single();
-                if (data) setGlobalData(data.data);
+                try {
+                    const { data, error } = await supabase.from('bravo_state').select('data').eq('id', 'main').single();
+                    if (error) throw error;
+                    if (data) setGlobalData(data.data);
+                } catch (e) {
+                    console.error("Error al cargar datos Supabase:", e.message);
+                }
                 setLoading(false);
             };
 
@@ -154,20 +135,13 @@
             };
 
             const handleLogin = () => {
-                if (!globalData) {
-                    alert("Base de datos no encontrada. Revisá Supabase.");
-                    return;
-                }
+                if (!globalData) { alert("Base de datos no encontrada."); return; }
                 if (pinInput === globalData.profesorPin) {
                     setView('profesor');
                 } else {
                     const client = globalData.clients?.find(c => c.pin === pinInput);
-                    if (client) {
-                        setCurrentUser(client);
-                        setView('cliente');
-                    } else {
-                        alert('PIN incorrecto. Revisa el código.');
-                    }
+                    if (client) { setCurrentUser(client); setView('cliente'); } 
+                    else { alert('PIN incorrecto.'); }
                 }
                 setPinInput('');
             };
@@ -177,36 +151,25 @@
                 const newData = JSON.parse(JSON.stringify(globalData));
                 const pin = Math.floor(1000 + Math.random() * 9000).toString();
                 const newClient = { id: Date.now().toString(), name: newClientName, pin };
-                
                 if(!newData.clients) newData.clients = [];
                 if(!newData.routines) newData.routines = {};
                 if(!newData.progress) newData.progress = {};
-
                 newData.clients.push(newClient);
                 newData.routines[newClient.id] = [];
-                
                 saveData(newData);
                 setNewClientName('');
             };
 
             const addDay = (clientId) => {
                 const newData = JSON.parse(JSON.stringify(globalData));
-                newData.routines[clientId].push({
-                    id: Date.now().toString(),
-                    name: "Día " + (newData.routines[clientId].length + 1),
-                    exercises: []
-                });
+                newData.routines[clientId].push({ id: Date.now().toString(), name: "Día " + (newData.routines[clientId].length + 1), exercises: [] });
                 saveData(newData);
             };
 
             const addExercise = (clientId, dayId) => {
                 const newData = JSON.parse(JSON.stringify(globalData));
                 const day = newData.routines[clientId].find(d => d.id === dayId);
-                day.exercises.push({
-                    id: Date.now().toString(),
-                    name: 'Nuevo Ejercicio',
-                    sets: '4', reps: '10', rir: '2'
-                });
+                day.exercises.push({ id: Date.now().toString(), name: 'Nuevo Ejercicio', sets: '4', reps: '10', rir: '2' });
                 saveData(newData);
             };
 
@@ -232,7 +195,7 @@
                 saveData(newData);
             };
 
-            if (loading) return <div className="app-container flex items-center justify-center h-screen"><p className="text-blue-500 font-bold animate-pulse text-xl">Conectando a tu base de datos...</p></div>;
+            if (loading) return <div className="app-container flex items-center justify-center h-screen"><p className="text-blue-500 font-bold animate-pulse text-xl">Conectando base de datos...</p></div>;
 
             if (view === 'home') return (
                 <div className="app-container flex flex-col justify-center p-6 space-y-10">
@@ -243,16 +206,8 @@
                     </div>
                     <div className="bg-gray-800 p-6 rounded-2xl border border-gray-700 shadow-xl">
                         <label className="text-xs uppercase font-bold text-gray-400 block mb-2">Ingresar con PIN</label>
-                        <input 
-                            type="password" 
-                            className="w-full bg-gray-900 border border-gray-600 p-4 rounded-xl text-center text-2xl tracking-[0.5em] focus:border-blue-500 outline-none mb-4" 
-                            placeholder="****"
-                            value={pinInput}
-                            onChange={(e) => setPinInput(e.target.value)}
-                        />
-                        <button onClick={handleLogin} className="w-full bg-blue-600 hover:bg-blue-700 py-4 rounded-xl font-bold text-lg transition shadow-lg shadow-blue-600/30">
-                            Entrar
-                        </button>
+                        <input type="password" className="w-full bg-gray-900 border border-gray-600 p-4 rounded-xl text-center text-2xl tracking-[0.5em] focus:border-blue-500 outline-none mb-4" placeholder="****" value={pinInput} onChange={(e) => setPinInput(e.target.value)} />
+                        <button onClick={handleLogin} className="w-full bg-blue-600 hover:bg-blue-700 py-4 rounded-xl font-bold text-lg transition shadow-lg shadow-blue-600/30">Entrar</button>
                     </div>
                 </div>
             );
@@ -260,9 +215,7 @@
             if (view === 'profesor') return (
                 <div className="app-container flex flex-col">
                     <header className="bg-gray-950 p-4 border-b border-gray-800 flex justify-between items-center sticky top-0 z-10">
-                        <h2 className="font-bold text-lg flex items-center gap-2 text-blue-500">
-                            <i className="fa-solid fa-user-gear"></i> Panel Profesor
-                        </h2>
+                        <h2 className="font-bold text-lg flex items-center gap-2 text-blue-500"><i className="fa-solid fa-user-gear"></i> Panel Profesor</h2>
                         <button onClick={() => setView('home')} className="text-gray-400 p-2"><i className="fa-solid fa-arrow-right-from-bracket"></i></button>
                     </header>
                     <div className="p-4 space-y-6">
@@ -277,38 +230,25 @@
                         <div className="space-y-4 pb-20">
                             {globalData.clients?.map(client => (
                                 <div key={client.id} className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
-                                    <div 
-                                        className="p-4 flex justify-between items-center cursor-pointer bg-gray-800 hover:bg-gray-750"
-                                        onClick={() => setExpandedClient(expandedClient === client.id ? null : client.id)}
-                                    >
+                                    <div className="p-4 flex justify-between items-center cursor-pointer bg-gray-800 hover:bg-gray-750" onClick={() => setExpandedClient(expandedClient === client.id ? null : client.id)}>
                                         <div>
                                             <p className="font-bold text-lg">{client.name}</p>
                                             <p className="text-xs text-blue-400 mt-1 font-mono">PIN: {client.pin}</p>
                                         </div>
                                         <i className={"fa-solid text-gray-500 fa-chevron-" + (expandedClient === client.id ? 'up' : 'down')}></i>
                                     </div>
-
                                     {expandedClient === client.id && (
                                         <div className="p-4 bg-gray-950 border-t border-gray-700 space-y-6">
                                             {globalData.routines[client.id]?.map(day => (
-                                                <div key={day.id} className="space-y-3">
+                                                <div className="space-y-3" key={day.id}>
                                                     <h4 className="font-bold text-blue-500 border-b border-gray-800 pb-2">{day.name}</h4>
                                                     {day.exercises.map(ex => (
-                                                        <ExerciseRow 
-                                                            key={ex.id} 
-                                                            exercise={ex} 
-                                                            onUpdate={(updatedData) => updateExercise(client.id, day.id, updatedData)} 
-                                                            onDelete={() => deleteExercise(client.id, day.id, ex.id)}
-                                                        />
+                                                        <ExerciseRow key={ex.id} exercise={ex} onUpdate={(updatedData) => updateExercise(client.id, day.id, updatedData)} onDelete={() => deleteExercise(client.id, day.id, ex.id)} />
                                                     ))}
-                                                    <button onClick={() => addExercise(client.id, day.id)} className="w-full py-3 border border-dashed border-gray-600 rounded-lg text-gray-400 text-sm font-bold hover:bg-gray-800 transition">
-                                                        <i className="fa-solid fa-plus mr-2"></i> Agregar Ejercicio
-                                                    </button>
+                                                    <button onClick={() => addExercise(client.id, day.id)} className="w-full py-3 border border-dashed border-gray-600 rounded-lg text-gray-400 text-sm font-bold hover:bg-gray-800 transition"><i className="fa-solid fa-plus mr-2"></i> Agregar Ejercicio</button>
                                                 </div>
                                             ))}
-                                            <button onClick={() => addDay(client.id)} className="w-full bg-blue-600 py-3 rounded-lg font-bold shadow-lg mt-4">
-                                                Crear Día de Entrenamiento
-                                            </button>
+                                            <button onClick={() => addDay(client.id)} className="w-full bg-blue-600 py-3 rounded-lg font-bold shadow-lg mt-4">Crear Día de Entrenamiento</button>
                                         </div>
                                     )}
                                 </div>
@@ -321,26 +261,29 @@
             if (view === 'cliente') return (
                 <div className="app-container flex flex-col">
                     <header className="bg-gray-950 p-4 border-b border-gray-800 flex justify-between items-center sticky top-0 z-10">
-                        <h2 className="font-bold text-lg flex items-center gap-2 text-blue-500">
-                            <i className="fa-solid fa-clipboard-list"></i> Mi Rutina
-                        </h2>
+                        <h2 className="font-bold text-lg flex items-center gap-2 text-blue-500"><i className="fa-solid fa-clipboard-list"></i> Mi Rutina</h2>
                         <div className="flex items-center gap-4">
                             <span className="text-sm font-bold">{currentUser.name}</span>
                             <button onClick={() => setView('home')} className="text-red-400 p-2"><i className="fa-solid fa-arrow-right-from-bracket"></i></button>
                         </div>
                     </header>
                     <div className="p-4 space-y-8 pb-20">
-                        {globalData.routines[currentUser.id]?.length === 0 && (
-                            <div className="text-center p-10 text-gray-500">Tu profe todavía no te cargó la rutina.</div>
-                        )}
-                        
+                        {globalData.routines[currentUser.id]?.length === 0 && <div className="text-center p-10 text-gray-500">Tu profe todavía no te cargó la rutina.</div>}
                         {globalData.routines[currentUser.id]?.map(day => (
                             <div key={day.id}>
-                                <div className="bg-blue-900/20 border border-blue-900 p-3 rounded-xl mb-4">
-                                    <h3 className="font-bold text-xl text-white">{day.name}</h3>
-                                </div>
+                                <div className="bg-blue-900/20 border border-blue-900 p-3 rounded-xl mb-4"><h3 className="font-bold text-xl text-white">{day.name}</h3></div>
                                 {day.exercises.map(ex => (
-                                    <ClientExerciseRow 
-                                        key={ex.id} 
-                                        exercise={ex} 
-            
+                                    <ClientExerciseRow key={ex.id} exercise={ex} progressData={globalData.progress?.[currentUser.id]?.[ex.id]} onSaveProgress={(weight, reps) => saveProgress(ex.id, weight, reps)} />
+                                ))}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
