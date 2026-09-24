@@ -9,7 +9,7 @@
     <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <!-- Enlaces de motor cambiados a jsDelivr con permisos de seguridad para evitar bloqueos en celulares -->
+    <!-- Enlaces de motor seguros -->
     <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.22.13/babel.min.js" crossorigin="anonymous"></script>
@@ -42,11 +42,10 @@
         </div>
     </div>
 
-    <!-- Capturador de errores avanzado -->
     <script>
         window.addEventListener('error', function(e) {
             const root = document.getElementById('root');
-            if(root) root.innerHTML = '<div style="background:#7f1d1d; color:white; padding:20px; margin:20px; border-radius:10px;"><b>Fallo de conexión:</b><br>' + (e.message || 'Script bloqueado por el navegador') + '<br><br>Intenta abrir en modo incógnito o revisa tu conexión.</div>';
+            if(root) root.innerHTML = '<div style="background:#7f1d1d; color:white; padding:20px; margin:20px; border-radius:10px;"><b>Fallo de conexión:</b><br>' + (e.message || 'Script bloqueado') + '</div>';
         }, true);
     </script>
 
@@ -68,10 +67,11 @@
                         <input className="bg-transparent font-bold text-lg outline-none w-2/3 text-white placeholder-gray-500" value={localEx.name} onChange={(e) => handleChange('name', e.target.value)} onBlur={handleBlur} placeholder="Nombre del ejercicio" />
                         <button onClick={onDelete} className="bg-dark-700 text-brand-500 p-2 rounded-lg text-sm"><i className="fa-solid fa-xmark"></i></button>
                     </div>
-                    <div className="flex gap-2 text-sm text-gray-400 items-center">
-                        <input className="w-12 bg-transparent outline-none border-b border-dark-700 text-center text-white focus:border-brand-500" value={localEx.sets} onChange={(e) => handleChange('sets', e.target.value)} onBlur={handleBlur} /> series
-                        <input className="w-16 bg-transparent outline-none border-b border-dark-700 text-center text-white ml-2 focus:border-brand-500" value={localEx.reps} onChange={(e) => handleChange('reps', e.target.value)} onBlur={handleBlur} /> reps
+                    <div className="flex gap-2 text-sm text-gray-400 items-center overflow-x-auto hide-scrollbar pb-1">
+                        <input className="w-10 bg-transparent outline-none border-b border-dark-700 text-center text-white focus:border-brand-500" value={localEx.sets} onChange={(e) => handleChange('sets', e.target.value)} onBlur={handleBlur} /> series
+                        <input className="w-14 bg-transparent outline-none border-b border-dark-700 text-center text-white ml-2 focus:border-brand-500" value={localEx.reps} onChange={(e) => handleChange('reps', e.target.value)} onBlur={handleBlur} /> reps
                         <span className="ml-2">RIR</span><input className="w-8 bg-transparent outline-none border-b border-dark-700 text-center text-white focus:border-brand-500" value={localEx.rir} onChange={(e) => handleChange('rir', e.target.value)} onBlur={handleBlur} />
+                        <span className="ml-2"><i className="fa-regular fa-clock"></i></span><input className="w-12 bg-transparent outline-none border-b border-dark-700 text-center text-white focus:border-brand-500" value={localEx.rest || '90s'} onChange={(e) => handleChange('rest', e.target.value)} onBlur={handleBlur} placeholder="90s" />
                     </div>
                 </div>
             );
@@ -99,8 +99,10 @@
             return (
                 <div className="bg-dark-800 p-5 rounded-2xl mb-4 border border-dark-700">
                     <h4 className="font-bold text-xl text-white mb-2">{exercise.name}</h4>
-                    <p className="text-sm text-gray-400 mb-4">
-                        Meta <strong className="text-white">{exercise.reps} reps</strong> &nbsp;&nbsp; RIR <strong className="text-white">{exercise.rir}</strong>
+                    <p className="text-sm text-gray-400 mb-4 flex flex-wrap gap-3">
+                        <span>Meta <strong className="text-white">{exercise.reps} reps</strong></span>
+                        <span>RIR <strong className="text-white">{exercise.rir}</strong></span>
+                        <span className="text-brand-500"><i className="fa-regular fa-clock"></i> <strong className="text-white">{exercise.rest || '90s'}</strong></span>
                     </p>
                     
                     <div className="grid grid-cols-[auto_1fr_1fr_auto] gap-3 mb-2 text-xs text-gray-500 font-bold uppercase tracking-wider">
@@ -116,7 +118,7 @@
                             <div className="relative">
                                 <input type="number" className="w-full bg-dark-900 rounded-lg p-2 text-white outline-none text-center" placeholder="-" value={set.reps} onChange={(e) => updateSet(i, 'reps', e.target.value)} />
                             </div>
-                            <button onClick={() => updateSet(i, 'done', !set.done)} className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${set.done ? 'bg-brand-500 text-white' : 'bg-dark-900 border border-dark-600 text-dark-600'}`}>
+                            <button onClick={() => updateSet(i, 'done', !set.done)} className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${set.done ? 'bg-brand-500 text-white shadow-[0_0_10px_rgba(239,68,68,0.5)]' : 'bg-dark-900 border border-dark-600 text-dark-600'}`}>
                                 <i className="fa-solid fa-check"></i>
                             </button>
                         </div>
@@ -137,6 +139,12 @@
             const [newClientName, setNewClientName] = useState('');
             const [activeClient, setActiveClient] = useState(null);
             const [activeDayId, setActiveDayId] = useState(null);
+            
+            // Estados nuevos para Pestañas y Cronómetro
+            const [clientTab, setClientTab] = useState('rutina'); 
+            const [activeWeek, setActiveWeek] = useState(1); // Para los Microciclos
+            const [trainingTime, setTrainingTime] = useState(0);
+            const [isTraining, setIsTraining] = useState(false);
 
             useEffect(() => {
                 fetchData();
@@ -146,14 +154,35 @@
                 return () => { supabase.removeChannel(channel); };
             }, []);
 
+            // Lógica del Cronómetro
+            useEffect(() => {
+                let interval = null;
+                if (view === 'cliente' && isTraining) {
+                    interval = setInterval(() => setTrainingTime(t => t + 1), 1000);
+                } else {
+                    clearInterval(interval);
+                }
+                return () => clearInterval(interval);
+            }, [view, isTraining]);
+
+            const formatTime = (secs) => {
+                const m = Math.floor(secs / 60).toString().padStart(2, '0');
+                const s = (secs % 60).toString().padStart(2, '0');
+                return `${m}:${s}`;
+            };
+
+            const handleFinishTraining = () => {
+                setIsTraining(false);
+                alert(`¡Entrenamiento guardado con éxito! 💪\nTiempo total: ${formatTime(trainingTime)}`);
+                // Opcional: Podríamos volverlo al Home haciendo setView('home')
+            };
+
             const fetchData = async () => {
                 try {
                     const { data, error } = await supabase.from('bravo_state').select('data').eq('id', 'main').single();
                     if (error) throw error;
                     if (data) setGlobalData(data.data);
-                } catch (e) {
-                    console.error("Error BD:", e.message);
-                }
+                } catch (e) { console.error("Error BD:", e.message); }
                 setLoading(false);
             };
 
@@ -163,16 +192,16 @@
             };
 
             const handleLogin = () => {
-                if (!globalData) {
-                    alert("No se detectó la base de datos. Avisale al profe.");
-                    return;
-                }
+                if (!globalData) { alert("Base de datos no detectada."); return; }
                 if (pinInput === globalData.profesorPin) { setView('profesor'); } 
                 else {
                     const client = globalData.clients?.find(c => c.pin === pinInput);
                     if (client) { 
                         setCurrentUser(client); 
                         if(globalData.routines[client.id]?.length > 0) setActiveDayId(globalData.routines[client.id][0].id);
+                        setClientTab('rutina');
+                        setTrainingTime(0); // Reiniciar cronómetro
+                        setIsTraining(true); // Arrancar cronómetro
                         setView('cliente'); 
                     } else { alert('PIN incorrecto. Revisalo bien.'); }
                 }
@@ -204,7 +233,8 @@
             const addExercise = (clientId, dayId) => {
                 const newData = JSON.parse(JSON.stringify(globalData));
                 const day = newData.routines[clientId].find(d => d.id === dayId);
-                day.exercises.push({ id: Date.now().toString(), name: 'Nuevo Ejercicio', sets: '3', reps: '10', rir: '2' });
+                // Le agregamos el campo rest (descanso) por defecto
+                day.exercises.push({ id: Date.now().toString(), name: 'Nuevo Ejercicio', sets: '3', reps: '10-12', rir: '2', rest: '90s' });
                 saveData(newData);
             };
 
@@ -230,6 +260,23 @@
                 if (!newData.progress[currentUser.id][exerciseId]) newData.progress[currentUser.id][exerciseId] = {};
                 newData.progress[currentUser.id][exerciseId].sets = setsArray;
                 saveData(newData);
+            };
+
+            const calculateBadges = () => {
+                if(!currentUser || !globalData.progress?.[currentUser.id]) return { primerPaso: false, club100: false };
+                let maxWeight = 0;
+                let hasDoneSet = false;
+                
+                const userProgress = globalData.progress[currentUser.id];
+                Object.values(userProgress).forEach(exercise => {
+                    exercise.sets?.forEach(set => {
+                        if (set.done) hasDoneSet = true;
+                        if (set.weight && !isNaN(set.weight)) {
+                            if (parseFloat(set.weight) >= maxWeight) maxWeight = parseFloat(set.weight);
+                        }
+                    });
+                });
+                return { primerPaso: hasDoneSet, club100: maxWeight >= 100 };
             };
 
             if (loading) return <div className="app-container flex justify-center items-center"><i className="fa-solid fa-spinner fa-spin text-brand-500 text-4xl"></i></div>;
@@ -265,7 +312,7 @@
                             <div className="p-4 space-y-6">
                                 <div className="flex gap-2">
                                     <button className="bg-brand-500 text-white px-5 py-2 rounded-full font-bold text-sm">Rutina</button>
-                                    <button className="bg-dark-800 text-gray-400 px-5 py-2 rounded-full font-bold text-sm">Mesociclos</button>
+                                    <button className="bg-dark-800 text-gray-400 px-5 py-2 rounded-full font-bold text-sm">Mesociclos (Próximamente)</button>
                                 </div>
 
                                 <div className="flex gap-2 overflow-x-auto hide-scrollbar">
@@ -277,107 +324,3 @@
 
                                 {currentDay && (
                                     <div className="bg-dark-900 border border-dark-800 rounded-3xl p-4">
-                                        <div className="flex justify-between items-center mb-6 border-b border-dark-700 pb-2">
-                                            <input className="font-bold text-xl bg-transparent outline-none text-white w-2/3" value={currentDay.name} onChange={(e) => {
-                                                const newData = JSON.parse(JSON.stringify(globalData));
-                                                newData.routines[activeClient.id].find(d => d.id === currentDay.id).name = e.target.value;
-                                                saveData(newData);
-                                            }}/>
-                                            <button className="text-brand-500 text-sm font-bold bg-brand-500/10 px-3 py-1 rounded-lg">Borrar</button>
-                                        </div>
-
-                                        {currentDay.exercises.map(ex => (
-                                            <ExerciseRow key={ex.id} exercise={ex} onUpdate={(u) => updateExercise(activeClient.id, currentDay.id, u)} onDelete={() => deleteExercise(activeClient.id, currentDay.id, ex.id)} />
-                                        ))}
-
-                                        <button onClick={() => addExercise(activeClient.id, currentDay.id)} className="w-full bg-dark-800 py-4 rounded-xl font-bold text-sm mt-2 border border-dark-700 text-gray-300 hover:text-white"><i className="fa-solid fa-plus mr-2"></i> Agregar ejercicio</button>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    );
-                }
-
-                return (
-                    <div className="app-container flex flex-col">
-                        <header className="p-5 flex justify-between items-center border-b border-dark-800 bg-dark-900 sticky top-0">
-                            <h2 className="font-bold text-xl text-brand-500"><i className="fa-solid fa-user-gear"></i> Panel de Control</h2>
-                            <button onClick={() => setView('home')} className="text-gray-400 w-8 h-8 bg-dark-800 rounded-full flex items-center justify-center"><i className="fa-solid fa-arrow-right-from-bracket"></i></button>
-                        </header>
-                        <div className="p-5 space-y-6">
-                            <div className="flex gap-2 bg-dark-800 p-2 rounded-2xl border border-dark-700 shadow-inner">
-                                <input className="flex-1 bg-transparent px-4 outline-none text-sm text-white" placeholder="Nombre del alumno..." value={newClientName} onChange={(e) => setNewClientName(e.target.value)} />
-                                <button onClick={addClient} className="bg-brand-600 rounded-xl w-10 h-10 flex items-center justify-center text-white"><i className="fa-solid fa-plus"></i></button>
-                            </div>
-                            
-                            <div className="space-y-3">
-                                {globalData.clients?.map(client => (
-                                    <div key={client.id} onClick={() => { setActiveClient(client); if(globalData.routines[client.id]?.[0]) setActiveDayId(globalData.routines[client.id][0].id); }} className="bg-dark-800 p-4 rounded-2xl flex justify-between items-center cursor-pointer border border-dark-700 hover:border-brand-500 transition-colors">
-                                        <div>
-                                            <p className="font-bold text-lg text-white">{client.name}</p>
-                                            <p className="text-xs text-brand-500 mt-1">PIN: {client.pin}</p>
-                                        </div>
-                                        <i className="fa-solid fa-chevron-right text-gray-600"></i>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                );
-            }
-
-            // --- PANTALLA ALUMNO ---
-            if (view === 'cliente') {
-                const clientRoutines = globalData.routines[currentUser.id] || [];
-                const currentDay = clientRoutines.find(d => d.id === activeDayId) || clientRoutines[0];
-
-                return (
-                    <div className="app-container flex flex-col pb-20">
-                        <header className="p-5 flex justify-between items-center bg-dark-900 sticky top-0 z-10 border-b border-dark-800">
-                            <div>
-                                <h1 className="text-2xl font-bold">Hola, <span className="text-white">{currentUser.name}</span></h1>
-                                <p className="text-gray-400 text-sm">Tu rutina</p>
-                            </div>
-                            <button onClick={() => setView('home')} className="bg-dark-800 text-gray-300 px-4 py-2 rounded-xl text-sm border border-dark-700">Salir</button>
-                        </header>
-
-                        <div className="p-5 space-y-6">
-                            <div className="bg-dark-800 p-4 rounded-2xl flex justify-between items-center border border-dark-700">
-                                <div><h3 className="font-bold text-lg text-white">Entrenamiento</h3><p className="text-brand-500 text-sm"><i className="fa-solid fa-fire"></i> Enfoque principal</p></div>
-                                <span className="bg-dark-700 text-xs px-3 py-1 rounded-full text-gray-300 font-bold border border-dark-600">Semana 1</span>
-                            </div>
-
-                            <div className="flex justify-between items-center">
-                                <span className="bg-dark-800 text-gray-300 px-4 py-2 rounded-full text-sm flex items-center gap-2 border border-dark-700"><i className="fa-regular fa-clock text-brand-500"></i> 00:00</span>
-                                <button className="bg-brand-500 text-white px-6 py-2 rounded-full font-bold text-sm shadow-lg shadow-brand-500/20">Terminar</button>
-                            </div>
-
-                            <div className="flex gap-2">
-                                <button className="bg-brand-500 text-white px-5 py-2 rounded-full font-bold text-sm shadow-md shadow-brand-500/20">Rutina</button>
-                                <button className="bg-dark-800 text-gray-400 px-5 py-2 rounded-full font-bold text-sm border border-dark-700">Progreso</button>
-                            </div>
-
-                            {clientRoutines.length > 0 && (
-                                <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-2">
-                                    {clientRoutines.map(day => (
-                                        <button key={day.id} onClick={() => setActiveDayId(day.id)} className={`whitespace-nowrap px-5 py-2 rounded-full font-bold text-sm transition-colors ${activeDayId === day.id ? 'bg-brand-500 text-white shadow-md shadow-brand-500/20' : 'bg-dark-800 text-gray-400 border border-dark-700'}`}>{day.name}</button>
-                                    ))}
-                                </div>
-                            )}
-
-                            <div>
-                                {currentDay?.exercises.map(ex => (
-                                    <ClientExerciseRow key={ex.id} exercise={ex} progressData={globalData.progress?.[currentUser.id]?.[ex.id]} onSaveProgress={(setsArray) => saveClientProgress(ex.id, setsArray)} />
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                );
-            }
-        }
-
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
-</body>
-</html>
