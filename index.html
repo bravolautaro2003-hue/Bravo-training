@@ -4,12 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Bravo Training</title>
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <!-- Enlaces de motor seguros -->
     <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.22.13/babel.min.js" crossorigin="anonymous"></script>
@@ -20,7 +17,7 @@
             theme: {
                 extend: {
                     colors: {
-                        brand: { 500: '#ef4444', 600: '#dc2626' }, // Rojo Bravo
+                        brand: { 500: '#ef4444', 600: '#dc2626' },
                         dark: { 900: '#0a0a0a', 800: '#171717', 700: '#262626' }
                     }
                 }
@@ -130,7 +127,7 @@
             );
         }
 
-        function App() {
+                function App() {
             const [globalData, setGlobalData] = useState(null);
             const [loading, setLoading] = useState(true);
             const [view, setView] = useState('home'); 
@@ -140,9 +137,8 @@
             const [activeClient, setActiveClient] = useState(null);
             const [activeDayId, setActiveDayId] = useState(null);
             
-            // Estados nuevos para Pestañas y Cronómetro
             const [clientTab, setClientTab] = useState('rutina'); 
-            const [activeWeek, setActiveWeek] = useState(1); // Para los Microciclos
+            const [activeWeek, setActiveWeek] = useState(1); 
             const [trainingTime, setTrainingTime] = useState(0);
             const [isTraining, setIsTraining] = useState(false);
 
@@ -154,7 +150,6 @@
                 return () => { supabase.removeChannel(channel); };
             }, []);
 
-            // Lógica del Cronómetro
             useEffect(() => {
                 let interval = null;
                 if (view === 'cliente' && isTraining) {
@@ -174,7 +169,6 @@
             const handleFinishTraining = () => {
                 setIsTraining(false);
                 alert(`¡Entrenamiento guardado con éxito! 💪\nTiempo total: ${formatTime(trainingTime)}`);
-                // Opcional: Podríamos volverlo al Home haciendo setView('home')
             };
 
             const fetchData = async () => {
@@ -200,8 +194,8 @@
                         setCurrentUser(client); 
                         if(globalData.routines[client.id]?.length > 0) setActiveDayId(globalData.routines[client.id][0].id);
                         setClientTab('rutina');
-                        setTrainingTime(0); // Reiniciar cronómetro
-                        setIsTraining(true); // Arrancar cronómetro
+                        setTrainingTime(0); 
+                        setIsTraining(true); 
                         setView('cliente'); 
                     } else { alert('PIN incorrecto. Revisalo bien.'); }
                 }
@@ -233,7 +227,6 @@
             const addExercise = (clientId, dayId) => {
                 const newData = JSON.parse(JSON.stringify(globalData));
                 const day = newData.routines[clientId].find(d => d.id === dayId);
-                // Le agregamos el campo rest (descanso) por defecto
                 day.exercises.push({ id: Date.now().toString(), name: 'Nuevo Ejercicio', sets: '3', reps: '10-12', rir: '2', rest: '90s' });
                 saveData(newData);
             };
@@ -281,7 +274,6 @@
 
             if (loading) return <div className="app-container flex justify-center items-center"><i className="fa-solid fa-spinner fa-spin text-brand-500 text-4xl"></i></div>;
 
-            // --- PANTALLA LOGIN ---
             if (view === 'home') return (
                 <div className="app-container flex flex-col justify-center p-6 space-y-8">
                     <div className="text-center space-y-2">
@@ -295,7 +287,6 @@
                 </div>
             );
 
-            // --- PANTALLA PROFESOR ---
             if (view === 'profesor') {
                 if(activeClient) {
                     const clientRoutines = globalData.routines[activeClient.id] || [];
@@ -312,7 +303,7 @@
                             <div className="p-4 space-y-6">
                                 <div className="flex gap-2">
                                     <button className="bg-brand-500 text-white px-5 py-2 rounded-full font-bold text-sm">Rutina</button>
-                                    <button className="bg-dark-800 text-gray-400 px-5 py-2 rounded-full font-bold text-sm">Mesociclos (Próximamente)</button>
+                                    <button className="bg-dark-800 text-gray-400 px-5 py-2 rounded-full font-bold text-sm">Mesociclos</button>
                                 </div>
 
                                 <div className="flex gap-2 overflow-x-auto hide-scrollbar">
@@ -324,3 +315,141 @@
 
                                 {currentDay && (
                                     <div className="bg-dark-900 border border-dark-800 rounded-3xl p-4">
+                                        <div className="flex justify-between items-center mb-6 border-b border-dark-700 pb-2">
+                                            <input className="font-bold text-xl bg-transparent outline-none text-white w-2/3" value={currentDay.name} onChange={(e) => {
+                                                const newData = JSON.parse(JSON.stringify(globalData));
+                                                newData.routines[activeClient.id].find(d => d.id === currentDay.id).name = e.target.value;
+                                                saveData(newData);
+                                            }}/>
+                                            <button className="text-brand-500 text-sm font-bold bg-brand-500/10 px-3 py-1 rounded-lg">Borrar</button>
+                                        </div>
+
+                                        {currentDay.exercises.map(ex => (
+                                            <ExerciseRow key={ex.id} exercise={ex} onUpdate={(u) => updateExercise(activeClient.id, currentDay.id, u)} onDelete={() => deleteExercise(activeClient.id, currentDay.id, ex.id)} />
+                                        ))}
+
+                                        <button onClick={() => addExercise(activeClient.id, currentDay.id)} className="w-full bg-dark-800 py-4 rounded-xl font-bold text-sm mt-2 border border-dark-700 text-gray-300 hover:text-white"><i className="fa-solid fa-plus mr-2"></i> Agregar ejercicio</button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    );
+                }
+
+                return (
+                    <div className="app-container flex flex-col">
+                        <header className="p-5 flex justify-between items-center border-b border-dark-800 bg-dark-900 sticky top-0">
+                            <h2 className="font-bold text-xl text-brand-500"><i className="fa-solid fa-user-gear"></i> Panel de Control</h2>
+                            <button onClick={() => setView('home')} className="text-gray-400 w-8 h-8 bg-dark-800 rounded-full flex items-center justify-center"><i className="fa-solid fa-arrow-right-from-bracket"></i></button>
+                        </header>
+                        <div className="p-5 space-y-6">
+                            <div className="flex gap-2 bg-dark-800 p-2 rounded-2xl border border-dark-700 shadow-inner">
+                                <input className="flex-1 bg-transparent px-4 outline-none text-sm text-white" placeholder="Nombre del alumno..." value={newClientName} onChange={(e) => setNewClientName(e.target.value)} />
+                                <button onClick={addClient} className="bg-brand-600 rounded-xl w-10 h-10 flex items-center justify-center text-white"><i className="fa-solid fa-plus"></i></button>
+                            </div>
+                            
+                            <div className="space-y-3">
+                                {globalData.clients?.map(client => (
+                                    <div key={client.id} onClick={() => { setActiveClient(client); if(globalData.routines[client.id]?.[0]) setActiveDayId(globalData.routines[client.id][0].id); }} className="bg-dark-800 p-4 rounded-2xl flex justify-between items-center cursor-pointer border border-dark-700 hover:border-brand-500 transition-colors">
+                                        <div>
+                                            <p className="font-bold text-lg text-white">{client.name}</p>
+                                            <p className="text-xs text-brand-500 mt-1">PIN: {client.pin}</p>
+                                        </div>
+                                        <i className="fa-solid fa-chevron-right text-gray-600"></i>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (view === 'cliente') {
+                const clientRoutines = globalData.routines[currentUser.id] || [];
+                const currentDay = clientRoutines.find(d => d.id === activeDayId) || clientRoutines[0];
+                const badges = calculateBadges(); 
+
+                return (
+                    <div className="app-container flex flex-col pb-20">
+                        <header className="p-5 flex justify-between items-center bg-dark-900 sticky top-0 z-10 border-b border-dark-800">
+                            <div>
+                                <h1 className="text-2xl font-bold">Hola, <span className="text-white">{currentUser.name}</span></h1>
+                                <p className="text-gray-400 text-sm">Tu espacio personal</p>
+                            </div>
+                            <button onClick={() => setView('home')} className="bg-dark-800 text-gray-300 px-4 py-2 rounded-xl text-sm border border-dark-700">Salir</button>
+                        </header>
+
+                        <div className="p-5 space-y-6">
+                            
+                            <div className="flex gap-2">
+                                <button onClick={() => setClientTab('rutina')} className={`px-5 py-2 rounded-full font-bold text-sm transition-colors ${clientTab === 'rutina' ? 'bg-brand-500 text-white shadow-md shadow-brand-500/20' : 'bg-dark-800 text-gray-400 border border-dark-700'}`}>Rutina</button>
+                                <button onClick={() => setClientTab('progreso')} className={`px-5 py-2 rounded-full font-bold text-sm transition-colors ${clientTab === 'progreso' ? 'bg-brand-500 text-white shadow-md shadow-brand-500/20' : 'bg-dark-800 text-gray-400 border border-dark-700'}`}>Progreso</button>
+                            </div>
+
+                            {clientTab === 'rutina' && (
+                                <div>
+                                    <div className="flex justify-between items-center mb-6">
+                                        <span className="bg-dark-800 text-gray-300 px-4 py-2 rounded-full text-sm flex items-center gap-2 border border-dark-700"><i className="fa-regular fa-clock text-brand-500"></i> {formatTime(trainingTime)}</span>
+                                        <button onClick={handleFinishTraining} className="bg-brand-500 text-white px-6 py-2 rounded-full font-bold text-sm shadow-lg shadow-brand-500/20">Terminar</button>
+                                    </div>
+
+                                    <div className="flex gap-2 overflow-x-auto hide-scrollbar mb-6">
+                                        {[1, 2, 3, 4].map(num => (
+                                            <button key={num} onClick={() => setActiveWeek(num)} className={`whitespace-nowrap px-4 py-1 rounded-full text-xs font-bold border ${activeWeek === num ? 'bg-dark-700 text-white border-gray-500' : 'bg-dark-900 text-gray-600 border-dark-800'}`}>Semana {num}</button>
+                                        ))}
+                                    </div>
+
+                                    {clientRoutines.length > 0 && (
+                                        <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-2 mb-4">
+                                            {clientRoutines.map(day => (
+                                                <button key={day.id} onClick={() => setActiveDayId(day.id)} className={`whitespace-nowrap px-5 py-2 rounded-full font-bold text-sm transition-colors ${activeDayId === day.id ? 'bg-dark-700 text-white border border-brand-500' : 'bg-dark-800 text-gray-400 border border-dark-700'}`}>{day.name}</button>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    <div>
+                                        {currentDay?.exercises.map(ex => (
+                                            <ClientExerciseRow key={ex.id} exercise={ex} progressData={globalData.progress?.[currentUser.id]?.[ex.id]} onSaveProgress={(setsArray) => saveClientProgress(ex.id, setsArray)} />
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {clientTab === 'progreso' && (
+                                <div className="space-y-6">
+                                    <div className="bg-dark-800 p-5 rounded-2xl border border-dark-700 shadow-inner">
+                                        <h3 className="text-xl font-bold text-white mb-1"><i className="fa-solid fa-trophy text-brand-500 mr-2"></i> Vitrina de Logros</h3>
+                                        <p className="text-sm text-gray-400 mb-6">Desbloqueá insignias superando tus propios límites.</p>
+                                        
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className={`p-4 rounded-xl border flex flex-col items-center text-center transition-all ${badges.primerPaso ? 'bg-dark-700 border-brand-500 shadow-[0_0_15px_rgba(239,68,68,0.2)]' : 'bg-dark-900 border-dark-700 opacity-50 grayscale'}`}>
+                                                <div className={`w-12 h-12 rounded-full flex items-center justify-center text-2xl mb-2 ${badges.primerPaso ? 'bg-brand-500 text-white' : 'bg-dark-700 text-gray-500'}`}>
+                                                    <i className="fa-solid fa-fire"></i>
+                                                </div>
+                                                <h4 className="font-bold text-sm text-white">Primer Paso</h4>
+                                                <p className="text-xs text-gray-400 mt-1">Completar una serie.</p>
+                                            </div>
+
+                                            <div className={`p-4 rounded-xl border flex flex-col items-center text-center transition-all ${badges.club100 ? 'bg-dark-700 border-brand-500 shadow-[0_0_15px_rgba(239,68,68,0.2)]' : 'bg-dark-900 border-dark-700 opacity-50 grayscale'}`}>
+                                                <div className={`w-12 h-12 rounded-full flex items-center justify-center text-2xl mb-2 ${badges.club100 ? 'bg-brand-500 text-white' : 'bg-dark-700 text-gray-500'}`}>
+                                                    <i className="fa-solid fa-weight-hanging"></i>
+                                                </div>
+                                                <h4 className="font-bold text-sm text-white">Club de los 100</h4>
+                                                <p className="text-xs text-gray-400 mt-1">Levantar 100kg o más.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                        </div>
+                    </div>
+                );
+            }
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
