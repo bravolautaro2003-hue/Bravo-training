@@ -378,11 +378,19 @@
                 handleSetBlur();
             };
 
+            // Función de aumento/disminución fluida de 2.5 en 2.5 kg
             const adjustWeight = (index, amount) => {
-                const currentVal = parseFloat(localSets[index].weight) || 0;
-                const newVal = Math.max(0, currentVal + amount);
-                updateSetLocal(index, 'weight', newVal === 0 ? '' : newVal.toString());
-                handleSetBlur();
+                const currentVal = parseFloat(localSets[index].weight);
+                let newVal;
+                if (isNaN(currentVal)) {
+                    newVal = amount > 0 ? 2.5 : 0;
+                } else {
+                    newVal = Math.max(0, currentVal + amount);
+                }
+                const updatedSets = structuredClone(localSets);
+                updatedSets[index].weight = newVal === 0 ? '' : newVal.toString();
+                setLocalSets(updatedSets);
+                onSaveProgress(updatedSets, localNote);
             };
 
             return (
@@ -489,7 +497,7 @@
                                 </div>
 
                                 <div className="flex items-center bg-dark-800 rounded-xl border border-dark-600 focus-within:border-brand-500 overflow-hidden shadow-inner">
-                                    <button onClick={() => adjustWeight(i, -2.5)} className="w-7 h-10 text-gray-400 hover:text-white hover:bg-dark-700 transition-colors text-xs font-bold flex items-center justify-center">-</button>
+                                    <button type="button" onClick={() => adjustWeight(i, -2.5)} className="w-7 h-10 text-gray-400 hover:text-white hover:bg-dark-700 transition-colors text-xs font-bold flex items-center justify-center">-</button>
                                     <input 
                                         type="text" 
                                         inputMode="decimal"
@@ -499,7 +507,7 @@
                                         onChange={(e) => updateSetLocal(i, 'weight', e.target.value)} 
                                         onBlur={handleSetBlur}
                                     />
-                                    <button onClick={() => adjustWeight(i, 2.5)} className="w-7 h-10 text-gray-400 hover:text-white hover:bg-dark-700 transition-colors text-xs font-bold flex items-center justify-center">+</button>
+                                    <button type="button" onClick={() => adjustWeight(i, 2.5)} className="w-7 h-10 text-gray-400 hover:text-white hover:bg-dark-700 transition-colors text-xs font-bold flex items-center justify-center">+</button>
                                 </div>
                                 
                                 <input 
@@ -617,7 +625,6 @@
                     if (data && data.data) {
                         setGlobalData(data.data);
                     } else {
-                        // Estructura por defecto si no existe la fila (Previene errores críticos)
                         setGlobalData({ profesorPin: '0000', clients: [], routines: {}, progress: {} });
                     }
                 } catch (e) { 
@@ -948,6 +955,12 @@
                             </header>
 
                             <div className="p-5">
+                                {/* Saludo al cliente recuperado y destacado */}
+                                <div className="mb-6 bg-dark-800/60 p-4 rounded-2xl border border-white/5">
+                                    <h2 className="text-xl font-black text-white">Hola, {currentUser?.name || 'Atleta'}</h2>
+                                    <p className="text-xs text-gray-400 mt-0.5">Seleccioná tu semana y a darlo todo.</p>
+                                </div>
+
                                 <h3 className="font-black text-xs text-gray-400 uppercase tracking-widest mb-3">Seleccionar semana</h3>
                                 <div className="flex bg-dark-800/90 rounded-2xl p-1.5 mb-8 border border-white/5 shadow-inner">
                                     {[1, 2, 3, 4].map(num => (
