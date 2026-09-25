@@ -16,8 +16,8 @@
             theme: {
                 extend: {
                     colors: {
-                        brand: { 500: '#ffffff', 600: '#e5e5e5' }, // Blanco Pro
-                        dark: { 900: '#000000', 800: '#111111', 700: '#1c1c1e', 600: '#2c2c2e' } // Grises estilo Apple
+                        brand: { 500: '#A7C7E7', 600: '#8FB8DE' }, // Celeste Pastel
+                        dark: { 900: '#000000', 800: '#111111', 700: '#1c1c1e', 600: '#2c2c2e' } // Grises oscuros puros
                     }
                 }
             }
@@ -47,57 +47,90 @@
             const handleBlur = () => onUpdate(localEx);
 
             return (
-                <div className="bg-dark-700 p-4 rounded-xl mb-4">
+                <div className="bg-dark-700 p-4 rounded-xl mb-4 border border-dark-600">
                     <div className="flex justify-between items-start mb-2">
-                        <input className="bg-transparent font-bold text-lg outline-none w-5/6 text-white" value={localEx.name} onChange={(e) => handleChange('name', e.target.value)} onBlur={handleBlur} placeholder="Nombre del ejercicio" />
-                        <button onClick={onDelete} className="text-gray-500 hover:text-red-500"><i className="fa-solid fa-ellipsis-vertical"></i></button>
+                        <input className="bg-transparent font-bold text-lg outline-none w-5/6 text-white placeholder-gray-500" value={localEx.name} onChange={(e) => handleChange('name', e.target.value)} onBlur={handleBlur} placeholder="Nombre del ejercicio" />
+                        <button onClick={onDelete} className="text-gray-500 hover:text-red-500 transition-colors px-2 py-1"><i className="fa-solid fa-trash-can"></i></button>
                     </div>
-                    <div className="flex gap-4 text-sm text-gray-400 items-center">
-                        <div>
-                            <input className="w-8 bg-dark-600 rounded p-1 text-center text-white" value={localEx.sets} onChange={(e) => handleChange('sets', e.target.value)} onBlur={handleBlur} /> s
+                    <div className="flex gap-4 text-sm text-gray-400 items-center overflow-x-auto hide-scrollbar pb-1">
+                        <div className="flex items-center gap-1">
+                            <input className="w-8 bg-dark-600 rounded p-1 text-center text-white outline-none focus:border focus:border-brand-500" value={localEx.sets} onChange={(e) => handleChange('sets', e.target.value)} onBlur={handleBlur} /> s
                         </div>
-                        <div>
-                            <input className="w-12 bg-dark-600 rounded p-1 text-center text-white" value={localEx.reps} onChange={(e) => handleChange('reps', e.target.value)} onBlur={handleBlur} /> r
+                        <div className="flex items-center gap-1">
+                            <input className="w-12 bg-dark-600 rounded p-1 text-center text-white outline-none focus:border focus:border-brand-500" value={localEx.reps} onChange={(e) => handleChange('reps', e.target.value)} onBlur={handleBlur} /> r
                         </div>
-                        <div className="text-xs">RIR <input className="w-8 bg-dark-600 rounded p-1 text-center text-white" value={localEx.rir} onChange={(e) => handleChange('rir', e.target.value)} onBlur={handleBlur} /></div>
+                        <div className="text-xs flex items-center gap-1">
+                            RIR <input className="w-8 bg-dark-600 rounded p-1 text-center text-white outline-none focus:border focus:border-brand-500" value={localEx.rir} onChange={(e) => handleChange('rir', e.target.value)} onBlur={handleBlur} />
+                        </div>
+                        <div className="flex items-center gap-1">
+                            <i className="fa-regular fa-clock"></i> <input className="w-12 bg-dark-600 rounded p-1 text-center text-white outline-none focus:border focus:border-brand-500" value={localEx.rest || '90s'} onChange={(e) => handleChange('rest', e.target.value)} onBlur={handleBlur} placeholder="90s" />
+                        </div>
+                    </div>
+                    {/* Toggle Unilateral */}
+                    <div className="mt-4 pt-3 border-t border-dark-600 flex items-center gap-2">
+                        <input type="checkbox" id={`uni-${localEx.id}`} checked={localEx.isUnilateral || false} onChange={(e) => {handleChange('isUnilateral', e.target.checked); handleBlur();}} className="w-4 h-4 accent-brand-500 rounded cursor-pointer" />
+                        <label htmlFor={`uni-${localEx.id}`} className="text-xs text-gray-400 cursor-pointer select-none">Ejercicio Unilateral (Separar Izq/Der)</label>
                     </div>
                 </div>
             );
         }
 
         // --- COMPONENTE: EJECUCIÓN DE EJERCICIO (ALUMNO) ---
-        function ClientExerciseRow({ exercise, progressData, previousWeekData, onSaveProgress }) {
-            const setsCount = parseInt(exercise.sets) || 1;
+        function ClientExerciseRow({ exercise, progressData, previousWeekData, onSaveProgress, onStartRest }) {
+            const baseSetsCount = parseInt(exercise.sets) || 1;
+            const isUni = exercise.isUnilateral === true;
+            const totalRows = isUni ? baseSetsCount * 2 : baseSetsCount;
+
             const [localSets, setLocalSets] = useState(() => {
-                const saved = progressData?.sets || [];
-                return Array.from({length: setsCount}, (_, i) => ({
-                    weight: saved[i]?.weight || '', 
-                    reps: saved[i]?.reps || '',
-                    done: saved[i]?.done || false
-                }));
+                const saved = progressData?.sets;
+                if (saved && saved.length > 0) return saved;
+                return Array.from({length: totalRows}, () => ({ weight: '', reps: '', done: false, type: 'N' }));
             });
 
             useEffect(() => {
-                const saved = progressData?.sets || [];
-                setLocalSets(Array.from({length: setsCount}, (_, i) => ({
-                    weight: saved[i]?.weight || '', 
-                    reps: saved[i]?.reps || '',
-                    done: saved[i]?.done || false
-                })));
-            }, [progressData, setsCount]);
+                const saved = progressData?.sets;
+                if (saved && saved.length > 0) {
+                    setLocalSets(saved);
+                } else {
+                    setLocalSets(Array.from({length: totalRows}, () => ({ weight: '', reps: '', done: false, type: 'N' })));
+                }
+            }, [progressData, totalRows]);
 
             const updateSet = (index, field, value) => {
                 const newSets = [...localSets];
+                const wasDone = newSets[index].done;
                 newSets[index][field] = value;
                 setLocalSets(newSets);
                 onSaveProgress(newSets);
+                
+                // Auto-timer al marcar el check verde
+                if (field === 'done' && value === true && !wasDone) {
+                    onStartRest(exercise.rest || '90s');
+                }
+            };
+
+            const addSet = () => {
+                const addCount = isUni ? 2 : 1;
+                const newSets = [...localSets];
+                for(let i=0; i<addCount; i++){
+                    newSets.push({ weight: '', reps: '', done: false, type: 'N' });
+                }
+                setLocalSets(newSets);
+                onSaveProgress(newSets);
+            };
+
+            const cycleSetType = (index) => {
+                const types = ['N', 'W', 'D']; // Normal, Warmup, Drop
+                const current = localSets[index].type || 'N';
+                const next = types[(types.indexOf(current) + 1) % types.length];
+                updateSet(index, 'type', next);
             };
 
             return (
                 <div className="mb-10">
                     <div className="flex items-center gap-4 mb-4">
-                        <div className="w-12 h-12 bg-dark-700 rounded-lg flex items-center justify-center text-gray-400">
-                            <i className="fa-solid fa-dumbbell"></i>
+                        <div className="w-12 h-12 bg-dark-700 rounded-lg flex items-center justify-center text-brand-500 shadow-sm border border-dark-600">
+                            <i className="fa-solid fa-dumbbell text-xl"></i>
                         </div>
                         <div>
                             <h4 className="font-bold text-lg text-white leading-tight">{exercise.name}</h4>
@@ -105,8 +138,8 @@
                     </div>
 
                     <div className="flex gap-2 mb-6">
-                        <button className="bg-dark-700 text-sm font-bold px-4 py-2 rounded-full flex items-center gap-2"><i className="fa-solid fa-play text-xs"></i> Tutorial</button>
-                        <button className="bg-dark-700 text-sm font-bold px-4 py-2 rounded-full flex items-center gap-2"><i className="fa-solid fa-pencil text-xs"></i> Notas</button>
+                        <button onClick={() => alert('Próximamente: Tutoriales en video')} className="bg-dark-700 text-sm font-bold px-4 py-2 rounded-full flex items-center gap-2 hover:bg-dark-600 transition-colors text-white border border-dark-600"><i className="fa-solid fa-play text-xs text-brand-500"></i> Tutorial</button>
+                        <button onClick={() => alert('Próximamente: Block de notas del alumno')} className="bg-dark-700 text-sm font-bold px-4 py-2 rounded-full flex items-center gap-2 hover:bg-dark-600 transition-colors text-white border border-dark-600"><i className="fa-solid fa-pencil text-xs text-brand-500"></i> Notas</button>
                     </div>
                     
                     <div className="grid grid-cols-[auto_1fr_1fr_1fr_auto] gap-2 mb-2 text-[10px] text-gray-500 font-bold uppercase tracking-widest px-2">
@@ -118,37 +151,50 @@
                     </div>
                     
                     {localSets.map((set, i) => {
-                        // Buscamos qué hizo la semana pasada en esta misma serie
                         const prevSet = previousWeekData?.sets?.[i];
                         const prevText = prevSet?.weight && prevSet?.reps ? `${prevSet.weight} x ${prevSet.reps}` : '-';
-                        const isWarmup = i === 0; // Ejemplo estético: la primera serie como "W" (Warmup)
+                        
+                        // Lógica para Unilateral y Tipos de Serie
+                        const isRight = isUni && (i % 2 !== 0);
+                        const setNum = isUni ? Math.floor(i / 2) + 1 : i + 1;
+                        const setType = set.type || 'N';
+                        
+                        let badgeText = setType === 'N' ? setNum : setType;
+                        if (isUni) {
+                            badgeText = `${badgeText}${isRight ? 'D' : 'I'}`;
+                        }
+
+                        let badgeStyle = "bg-dark-700 text-gray-400 border-dark-600";
+                        if (setType === 'W') badgeStyle = "bg-orange-900/40 text-orange-500 border-orange-800";
+                        else if (setType === 'D') badgeStyle = "bg-red-900/40 text-red-500 border-red-800";
+                        else if (isUni) badgeStyle = isRight ? "bg-blue-900/30 text-blue-400 border-blue-900" : "bg-green-900/30 text-green-400 border-green-900";
 
                         return (
                             <div key={i} className={`grid grid-cols-[auto_1fr_1fr_1fr_auto] gap-2 items-center mb-2 p-1`}>
-                                <span className={`w-8 h-8 flex items-center justify-center rounded-lg font-bold text-xs ${isWarmup ? 'bg-orange-900/40 text-orange-500' : 'bg-dark-700 text-gray-400'}`}>
-                                    {isWarmup ? 'W' : i + 1}
-                                </span>
+                                <button onClick={() => cycleSetType(i)} className={`w-8 h-8 flex items-center justify-center rounded-lg font-bold text-xs border cursor-pointer hover:opacity-80 transition-opacity ${badgeStyle}`}>
+                                    {badgeText}
+                                </button>
                                 
                                 <div className="text-center text-gray-500 text-sm font-medium">
                                     {prevText}
                                 </div>
 
                                 <div className="relative">
-                                    <input type="number" className="w-full bg-dark-700 rounded-lg py-2.5 text-white outline-none text-center font-bold" placeholder="-" value={set.weight} onChange={(e) => updateSet(i, 'weight', e.target.value)} />
+                                    <input type="number" className="w-full bg-dark-700 rounded-lg py-2.5 text-white outline-none text-center font-bold border border-dark-600 focus:border-brand-500 transition-colors" placeholder="-" value={set.weight} onChange={(e) => updateSet(i, 'weight', e.target.value)} />
                                 </div>
                                 
                                 <div className="relative">
-                                    <input type="number" className="w-full bg-dark-700 rounded-lg py-2.5 text-white outline-none text-center font-bold" placeholder="-" value={set.reps} onChange={(e) => updateSet(i, 'reps', e.target.value)} />
+                                    <input type="number" className="w-full bg-dark-700 rounded-lg py-2.5 text-white outline-none text-center font-bold border border-dark-600 focus:border-brand-500 transition-colors" placeholder="-" value={set.reps} onChange={(e) => updateSet(i, 'reps', e.target.value)} />
                                 </div>
                                 
-                                <button onClick={() => updateSet(i, 'done', !set.done)} className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${set.done ? 'bg-green-500 text-white' : 'bg-dark-700 text-gray-500'}`}>
+                                <button onClick={() => updateSet(i, 'done', !set.done)} className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${set.done ? 'bg-brand-500 text-black shadow-[0_0_12px_rgba(167,199,231,0.4)]' : 'bg-dark-700 text-gray-500 border border-dark-600 hover:text-white'}`}>
                                     <i className="fa-solid fa-check"></i>
                                 </button>
                             </div>
                         )
                     })}
-                    <button className="w-full mt-4 bg-dark-700 text-gray-300 font-bold py-3 rounded-xl text-sm">
-                        + Añadir serie
+                    <button onClick={addSet} className="w-full mt-4 bg-dark-700 text-brand-500 font-bold py-3 rounded-xl text-sm border border-dark-600 hover:bg-dark-600 transition-colors">
+                        + Añadir serie {isUni ? 'I/D' : ''}
                     </button>
                 </div>
             );
@@ -160,11 +206,14 @@
             const [view, setView] = useState('home'); 
             const [currentUser, setCurrentUser] = useState(null);
             const [pinInput, setPinInput] = useState('');
+            const [newClientName, setNewClientName] = useState('');
             const [activeClient, setActiveClient] = useState(null);
             const [activeDayId, setActiveDayId] = useState(null);
             
             const [activeWeek, setActiveWeek] = useState(1); 
             const [isTrainingStarted, setIsTrainingStarted] = useState(false);
+            const [trainingTime, setTrainingTime] = useState(0);
+            const [restTime, setRestTime] = useState(0); 
 
             useEffect(() => {
                 fetchData();
@@ -173,6 +222,37 @@
                 }).subscribe();
                 return () => { supabase.removeChannel(channel); };
             }, []);
+
+            // Cronómetro general
+            useEffect(() => {
+                let interval = null;
+                if (view === 'cliente_entrenamiento' && isTrainingStarted) {
+                    interval = setInterval(() => setTrainingTime(t => t + 1), 1000);
+                } else { clearInterval(interval); }
+                return () => clearInterval(interval);
+            }, [view, isTrainingStarted]);
+
+            // Cronómetro de Descanso (Rest Timer)
+            useEffect(() => {
+                let restInterval = null;
+                if (restTime > 0) {
+                    restInterval = setInterval(() => setRestTime(t => t - 1), 1000);
+                }
+                return () => clearInterval(restInterval);
+            }, [restTime]);
+
+            const startRest = (timeString) => {
+                let t = parseInt(timeString);
+                if (timeString.toLowerCase().includes('m')) t = t * 60;
+                else if (isNaN(t)) t = 90; 
+                setRestTime(t);
+            };
+
+            const formatTime = (secs) => {
+                const m = Math.floor(secs / 60).toString().padStart(2, '0');
+                const s = (secs % 60).toString().padStart(2, '0');
+                return `${m}:${s}`;
+            };
 
             const fetchData = async () => {
                 try {
@@ -201,6 +281,19 @@
             };
 
             // PROFESOR
+            const addClient = () => {
+                if (!newClientName.trim()) return;
+                const newData = JSON.parse(JSON.stringify(globalData));
+                const newClient = { id: Date.now().toString(), name: newClientName, pin: Math.floor(1000 + Math.random() * 9000).toString() };
+                if(!newData.clients) newData.clients = [];
+                if(!newData.routines) newData.routines = {};
+                if(!newData.progress) newData.progress = {};
+                newData.clients.push(newClient);
+                newData.routines[newClient.id] = [];
+                saveData(newData);
+                setNewClientName('');
+            };
+
             const addDay = (clientId) => {
                 const newData = JSON.parse(JSON.stringify(globalData));
                 const newId = Date.now().toString();
@@ -208,10 +301,19 @@
                 saveData(newData);
             };
 
+            const deleteDay = (clientId, dayId) => {
+                const confirmacion = window.confirm('¿Seguro que querés borrar esta plantilla entera?');
+                if (!confirmacion) return;
+                const newData = JSON.parse(JSON.stringify(globalData));
+                newData.routines[clientId] = newData.routines[clientId].filter(d => d.id !== dayId);
+                saveData(newData);
+                setActiveDayId(null);
+            };
+
             const addExercise = (clientId, dayId) => {
                 const newData = JSON.parse(JSON.stringify(globalData));
                 const day = newData.routines[clientId].find(d => d.id === dayId);
-                day.exercises.push({ id: Date.now().toString(), name: 'Nuevo Ejercicio', sets: '4', reps: '10', rir: '2' });
+                day.exercises.push({ id: Date.now().toString(), name: '', sets: '4', reps: '10', rir: '2', rest: '90s', isUnilateral: false });
                 saveData(newData);
             };
 
@@ -220,6 +322,13 @@
                 const day = newData.routines[clientId].find(d => d.id === dayId);
                 const index = day.exercises.findIndex(e => e.id === updatedExercise.id);
                 day.exercises[index] = updatedExercise;
+                saveData(newData);
+            };
+
+            const deleteExercise = (clientId, dayId, exerciseId) => {
+                const newData = JSON.parse(JSON.stringify(globalData));
+                const day = newData.routines[clientId].find(d => d.id === dayId);
+                day.exercises = day.exercises.filter(e => e.id !== exerciseId);
                 saveData(newData);
             };
 
@@ -234,44 +343,46 @@
                 saveData(newData);
             };
 
-            if (loading) return <div className="app-container flex justify-center items-center h-screen bg-black text-white">Cargando...</div>;
+            if (loading) return <div className="app-container flex justify-center items-center h-screen bg-black text-brand-500 text-2xl font-bold"><i className="fa-solid fa-spinner fa-spin mr-3"></i> Cargando...</div>;
 
             // PANTALLA LOGIN
             if (view === 'home') return (
                 <div className="app-container flex flex-col justify-center p-6 space-y-8 bg-black h-screen">
-                    <h1 className="text-4xl font-black text-center text-white mb-8">Bravo<br/>Training</h1>
-                    <div className="bg-dark-700 p-6 rounded-3xl">
-                        <input type="password" placeholder="PIN" className="w-full bg-dark-800 p-4 rounded-xl text-center text-2xl tracking-[0.5em] outline-none mb-4 text-white" value={pinInput} onChange={(e) => setPinInput(e.target.value)} />
-                        <button onClick={handleLogin} className="w-full bg-white text-black py-4 rounded-xl font-bold text-lg">Entrar</button>
+                    <h1 className="text-4xl font-black text-center text-white mb-8">Bravo<br/><span className="text-brand-500">Training</span></h1>
+                    <div className="bg-dark-700 p-6 rounded-3xl border border-dark-600 shadow-2xl">
+                        <input type="password" placeholder="PIN" className="w-full bg-dark-800 p-4 rounded-xl text-center text-2xl tracking-[0.5em] outline-none mb-4 text-white border border-dark-600 focus:border-brand-500 transition-colors" value={pinInput} onChange={(e) => setPinInput(e.target.value)} />
+                        <button onClick={handleLogin} className="w-full bg-brand-500 text-black py-4 rounded-xl font-bold text-lg hover:bg-brand-600 transition-colors shadow-lg shadow-brand-500/20">Entrar</button>
                     </div>
                 </div>
             );
 
-            // PANTALLA PROFESOR - LISTADO DE ALUMNOS Y PLANTILLAS
+            // PANTALLA PROFESOR
             if (view === 'profesor') {
                 if(activeClient) {
                     const clientRoutines = globalData.routines[activeClient.id] || [];
                     
                     if(activeDayId) {
                         const currentDay = clientRoutines.find(d => d.id === activeDayId);
+                        if (!currentDay) { setActiveDayId(null); return null; }
+
                         return (
                             <div className="app-container pb-20">
                                 <header className="p-4 flex items-center justify-between sticky top-0 bg-black/90 backdrop-blur z-10 border-b border-dark-700">
-                                    <button onClick={() => setActiveDayId(null)} className="text-white w-10 h-10 flex items-center justify-center"><i className="fa-solid fa-arrow-left"></i></button>
-                                    <h2 className="font-bold text-lg text-white">Editar</h2>
+                                    <button onClick={() => setActiveDayId(null)} className="text-brand-500 w-10 h-10 flex items-center justify-center hover:text-white transition-colors"><i className="fa-solid fa-arrow-left text-xl"></i></button>
+                                    <h2 className="font-bold text-lg text-white">Editar Plantilla</h2>
                                     <div className="w-10"></div>
                                 </header>
                                 <div className="p-4">
-                                    <input className="font-black text-3xl bg-transparent outline-none text-white w-full mb-6" value={currentDay.name} onChange={(e) => {
+                                    <input className="font-black text-3xl lowercase bg-transparent outline-none text-white w-full mb-6 border-b border-transparent focus:border-brand-500 transition-colors placeholder-gray-600" value={currentDay.name} placeholder="Nombre del día..." onChange={(e) => {
                                         const newData = JSON.parse(JSON.stringify(globalData));
                                         newData.routines[activeClient.id].find(d => d.id === currentDay.id).name = e.target.value;
                                         saveData(newData);
                                     }}/>
                                     {currentDay.exercises.map(ex => (
-                                        <ExerciseRow key={ex.id} exercise={ex} onUpdate={(u) => updateExercise(activeClient.id, currentDay.id, u)} onDelete={() => {}} />
+                                        <ExerciseRow key={ex.id} exercise={ex} onUpdate={(u) => updateExercise(activeClient.id, currentDay.id, u)} onDelete={() => deleteExercise(activeClient.id, currentDay.id, ex.id)} />
                                     ))}
-                                    <button onClick={() => addExercise(activeClient.id, currentDay.id)} className="w-full bg-dark-700 text-white font-bold py-4 rounded-xl mt-4">
-                                        + Agregar ejercicio
+                                    <button onClick={() => addExercise(activeClient.id, currentDay.id)} className="w-full bg-brand-500 text-black font-bold py-4 rounded-xl mt-4 hover:bg-brand-600 transition-colors shadow-lg shadow-brand-500/20">
+                                        <i className="fa-solid fa-plus mr-2"></i> Agregar ejercicio
                                     </button>
                                 </div>
                             </div>
@@ -280,8 +391,8 @@
 
                     return (
                         <div className="app-container pb-20">
-                            <header className="p-4 flex items-center justify-between sticky top-0 bg-black/90 backdrop-blur z-10">
-                                <button onClick={() => setActiveClient(null)} className="text-white w-10 h-10"><i className="fa-solid fa-arrow-left"></i></button>
+                            <header className="p-4 flex items-center justify-between sticky top-0 bg-black/90 backdrop-blur z-10 border-b border-dark-700">
+                                <button onClick={() => setActiveClient(null)} className="text-brand-500 w-10 h-10 flex items-center justify-center hover:text-white transition-colors"><i className="fa-solid fa-arrow-left text-xl"></i></button>
                                 <h2 className="font-bold text-lg text-white">{activeClient.name}</h2>
                                 <div className="w-10"></div>
                             </header>
@@ -290,20 +401,20 @@
                                 <h3 className="font-bold text-xl mb-4 text-white">Tus plantillas</h3>
                                 <div className="space-y-4">
                                     {clientRoutines.map(day => (
-                                        <div key={day.id} onClick={() => setActiveDayId(day.id)} className="flex items-center gap-4 cursor-pointer">
+                                        <div key={day.id} onClick={() => setActiveDayId(day.id)} className="flex items-center gap-4 cursor-pointer bg-dark-700 p-3 rounded-2xl border border-dark-600 hover:border-brand-500 transition-colors">
                                             <div className="w-16 h-16 bg-white rounded-lg shrink-0 flex items-center justify-center text-black">
                                                 <i className="fa-solid fa-file-lines text-2xl"></i>
                                             </div>
                                             <div className="flex-1 overflow-hidden">
-                                                <h4 className="font-bold text-lg text-white truncate">{day.name}</h4>
+                                                <h4 className="font-bold text-lg text-white truncate lowercase">{day.name}</h4>
                                                 <p className="text-sm text-gray-500 truncate">{day.exercises.map(e => e.name).join(', ') || 'Sin ejercicios'}</p>
                                             </div>
-                                            <button className="text-gray-500 px-2"><i className="fa-solid fa-ellipsis-vertical"></i></button>
+                                            <button onClick={(e) => { e.stopPropagation(); deleteDay(activeClient.id, day.id); }} className="text-gray-500 px-4 py-2 hover:text-red-500 transition-colors"><i className="fa-solid fa-trash-can"></i></button>
                                         </div>
                                     ))}
                                 </div>
 
-                                <button onClick={() => addDay(activeClient.id)} className="mt-8 flex items-center gap-4 text-white font-bold w-full bg-dark-700 p-4 rounded-xl">
+                                <button onClick={() => addDay(activeClient.id)} className="mt-6 flex items-center justify-center gap-3 text-black font-bold w-full bg-brand-500 p-4 rounded-xl hover:bg-brand-600 transition-colors shadow-lg shadow-brand-500/20">
                                     <i className="fa-regular fa-folder text-xl"></i> Crear nueva plantilla
                                 </button>
                             </div>
@@ -313,14 +424,22 @@
 
                 return (
                     <div className="app-container pb-20">
-                        <header className="p-4 flex justify-between items-center bg-black sticky top-0 border-b border-dark-700">
+                        <header className="p-5 flex justify-between items-center bg-black sticky top-0 border-b border-dark-700 z-10">
                             <h2 className="font-black text-2xl text-white">Alumnos</h2>
-                            <button onClick={() => setView('home')} className="text-gray-400"><i className="fa-solid fa-arrow-right-from-bracket"></i></button>
+                            <button onClick={() => setView('home')} className="text-brand-500 hover:text-white transition-colors flex items-center gap-2 font-bold"><i className="fa-solid fa-arrow-right-from-bracket"></i> Salir</button>
                         </header>
-                        <div className="p-4 space-y-2">
+                        <div className="p-5 space-y-3">
+                            <div className="flex gap-2 bg-dark-800 p-2 rounded-2xl border border-dark-600 shadow-inner mb-6">
+                                <input className="flex-1 bg-transparent px-4 outline-none text-sm text-white focus:placeholder-gray-600" placeholder="Nombre del alumno nuevo..." value={newClientName} onChange={(e) => setNewClientName(e.target.value)} />
+                                <button onClick={addClient} className="bg-brand-500 rounded-xl w-10 h-10 flex items-center justify-center text-black hover:bg-brand-600 transition-colors shadow-md shadow-brand-500/30"><i className="fa-solid fa-plus"></i></button>
+                            </div>
+
                             {globalData.clients?.map(client => (
-                                <div key={client.id} onClick={() => setActiveClient(client)} className="bg-dark-700 p-4 rounded-xl flex justify-between items-center cursor-pointer">
-                                    <p className="font-bold text-lg text-white">{client.name}</p>
+                                <div key={client.id} onClick={() => setActiveClient(client)} className="bg-dark-700 p-5 rounded-2xl flex justify-between items-center cursor-pointer border border-dark-600 hover:border-brand-500 transition-all">
+                                    <div>
+                                        <p className="font-bold text-lg text-white">{client.name}</p>
+                                        <p className="text-xs text-brand-500 mt-1"><i className="fa-solid fa-key mr-1"></i> PIN: {client.pin}</p>
+                                    </div>
                                     <i className="fa-solid fa-chevron-right text-gray-500"></i>
                                 </div>
                             ))}
@@ -329,46 +448,46 @@
                 );
             }
 
-            // PANTALLA ALUMNO - LISTADO DE PLANTILLAS
+            // PANTALLA ALUMNO - LISTADO
             if (view === 'cliente_listado') {
                 const clientRoutines = globalData.routines[currentUser.id] || [];
 
                 return (
                     <div className="app-container pb-20">
-                        <header className="p-5 flex justify-between items-center sticky top-0 bg-black/90 backdrop-blur z-10">
-                            <h1 className="text-2xl font-bold text-white">Bravo Training</h1>
-                            <button onClick={() => setView('home')} className="text-gray-400 bg-dark-700 px-3 py-1 rounded-full text-xs font-bold">Salir</button>
+                        <header className="p-5 flex justify-between items-center sticky top-0 bg-black/90 backdrop-blur z-10 border-b border-dark-700">
+                            <h1 className="text-xl font-black text-white tracking-wide"><i className="fa-solid fa-layer-group text-brand-500 mr-2"></i>Symmetry<span className="text-brand-500">Fit</span></h1>
+                            <button onClick={() => setView('home')} className="text-black bg-white px-4 py-1.5 rounded-full text-xs font-bold shadow-md">Salir</button>
                         </header>
 
                         <div className="p-5">
-                            {/* Selector de Mesociclo estilo Píldora */}
-                            <div className="flex bg-dark-700 rounded-full p-1 mb-8">
+                            <h3 className="font-bold text-xl mb-4 text-white">Mesociclo actual</h3>
+                            <div className="flex bg-dark-700 rounded-full p-1.5 mb-8 border border-dark-600">
                                 {[1, 2, 3, 4].map(num => (
-                                    <button key={num} onClick={() => setActiveWeek(num)} className={`flex-1 py-1.5 text-sm font-bold rounded-full transition-all ${activeWeek === num ? 'bg-white text-black' : 'text-gray-400'}`}>Sem. {num}</button>
+                                    <button key={num} onClick={() => setActiveWeek(num)} className={`flex-1 py-2 text-sm font-bold rounded-full transition-all ${activeWeek === num ? 'bg-brand-500 text-black shadow-md' : 'text-gray-400 hover:text-white'}`}>Sem. {num}</button>
                                 ))}
                             </div>
 
                             <h3 className="font-bold text-xl mb-6 text-white">Tus plantillas</h3>
                             <div className="space-y-6">
                                 {clientRoutines.map(day => (
-                                    <div key={day.id} onClick={() => {setActiveDayId(day.id); setIsTrainingStarted(false); setView('cliente_entrenamiento');}} className="flex items-center gap-4 cursor-pointer group">
-                                        <div className="w-16 h-16 bg-white rounded-lg shrink-0 flex items-center justify-center text-black shadow-lg">
+                                    <div key={day.id} onClick={() => {setActiveDayId(day.id); setIsTrainingStarted(false); setView('cliente_entrenamiento');}} className="flex items-center gap-4 cursor-pointer group bg-dark-800 p-3 rounded-2xl border border-transparent hover:border-brand-500/50 transition-all">
+                                        <div className="w-16 h-16 bg-white rounded-xl shrink-0 flex items-center justify-center text-black shadow-lg">
                                             <i className="fa-solid fa-dumbbell text-2xl"></i>
                                         </div>
-                                        <div className="flex-1 overflow-hidden border-b border-dark-700 pb-4 group-last:border-0">
+                                        <div className="flex-1 overflow-hidden border-b border-dark-700 pb-3 group-last:border-0 pt-1">
                                             <h4 className="font-bold text-lg text-white truncate lowercase">{day.name}</h4>
                                             <p className="text-sm text-gray-500 truncate">{day.exercises.map(e => e.name).join(', ') || 'Sin ejercicios'}</p>
                                         </div>
+                                        <i className="fa-solid fa-ellipsis-vertical text-gray-600 pr-2"></i>
                                     </div>
                                 ))}
                             </div>
                         </div>
                         
-                        {/* Menú inferior estilo app */}
-                        <div className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-[480px] bg-black border-t border-dark-700 flex justify-around p-4 text-gray-500">
-                            <button className="text-white"><i className="fa-solid fa-dumbbell text-xl"></i></button>
-                            <button><i className="fa-regular fa-star text-xl"></i></button>
-                            <button><i className="fa-regular fa-user text-xl"></i></button>
+                        <div className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-[480px] bg-black/95 backdrop-blur border-t border-dark-700 flex justify-around p-4 text-gray-500 pb-6">
+                            <button className="text-brand-500 flex flex-col items-center gap-1"><i className="fa-solid fa-dumbbell text-xl"></i><span className="text-[10px] font-bold">Entrenar</span></button>
+                            <button onClick={() => alert('Próximamente: Historial y estadísticas')} className="hover:text-white transition-colors flex flex-col items-center gap-1"><i className="fa-solid fa-chart-line text-xl"></i><span className="text-[10px] font-bold">Progreso</span></button>
+                            <button onClick={() => alert('Próximamente: Perfil y configuración')} className="hover:text-white transition-colors flex flex-col items-center gap-1"><i className="fa-regular fa-user text-xl"></i><span className="text-[10px] font-bold">Perfil</span></button>
                         </div>
                     </div>
                 );
@@ -378,43 +497,41 @@
             if (view === 'cliente_entrenamiento') {
                 const clientRoutines = globalData.routines[currentUser.id] || [];
                 const currentDay = clientRoutines.find(d => d.id === activeDayId) || clientRoutines[0];
-                const totalMins = currentDay.exercises.length * 5; // Estimado falso para diseño
 
                 if (!isTrainingStarted) {
-                    // VISTA PREVIA DEL ENTRENAMIENTO
                     return (
                         <div className="app-container pb-24">
-                            <header className="p-4 flex items-center justify-between sticky top-0 bg-black z-10">
-                                <button onClick={() => setView('cliente_listado')} className="text-white w-10 h-10"><i className="fa-solid fa-arrow-left"></i></button>
-                                <button className="bg-dark-700 text-white px-4 py-1.5 rounded-full text-sm font-bold flex items-center gap-2"><i className="fa-solid fa-wand-magic-sparkles text-blue-400"></i> Adaptar</button>
+                            <header className="p-4 flex items-center justify-between sticky top-0 bg-black/90 backdrop-blur z-10 border-b border-dark-700">
+                                <button onClick={() => setView('cliente_listado')} className="text-brand-500 w-10 h-10 flex items-center justify-center hover:text-white transition-colors"><i className="fa-solid fa-arrow-left text-xl"></i></button>
+                                <button onClick={() => alert('Próximamente: Inteligencia Artificial para modificar la rutina en vivo')} className="bg-dark-700 text-white px-4 py-1.5 rounded-full text-sm font-bold flex items-center gap-2 border border-dark-600 hover:border-brand-500 transition-colors"><i className="fa-solid fa-wand-magic-sparkles text-brand-500"></i> Adaptar</button>
                             </header>
 
-                            <div className="p-4">
-                                <h2 className="font-black text-3xl lowercase text-white">{currentDay.name}</h2>
-                                <p className="text-gray-400 mb-8">{currentDay.exercises.length} Ejercicios, ~{totalMins} min</p>
+                            <div className="p-5">
+                                <h2 className="font-black text-4xl lowercase text-white mb-1">{currentDay.name}</h2>
+                                <p className="text-gray-400 mb-8 font-medium">{currentDay.exercises.length} Ejercicios planificados</p>
 
-                                <div className="flex justify-between items-center mb-4">
-                                    <h3 className="font-bold text-lg text-white">{currentDay.exercises.length} Ejercicios</h3>
+                                <div className="flex justify-between items-center mb-6">
+                                    <h3 className="font-bold text-xl text-white">Lista de Ejercicios</h3>
                                 </div>
 
                                 <div className="space-y-6">
-                                    {currentDay.exercises.map((ex, idx) => (
-                                        <div key={ex.id} className="flex gap-4 items-center">
-                                            <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shrink-0">
-                                                <i className="fa-solid fa-dumbbell text-black"></i>
+                                    {currentDay.exercises.map((ex) => (
+                                        <div key={ex.id} className="flex gap-4 items-center bg-dark-800 p-3 rounded-2xl border border-dark-700">
+                                            <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center shrink-0 shadow-md">
+                                                <i className="fa-solid fa-dumbbell text-black text-xl"></i>
                                             </div>
                                             <div className="flex-1">
-                                                <p className="text-xs text-gray-500 font-bold mb-1">{ex.sets} series x {ex.reps} reps</p>
-                                                <p className="font-bold text-white text-sm leading-tight">{ex.name}</p>
+                                                <p className="text-xs text-brand-500 font-bold mb-1 tracking-wider">{ex.sets} SERIES x {ex.reps} REPS</p>
+                                                <p className="font-bold text-white text-base leading-tight">{ex.name}</p>
                                             </div>
-                                            <i className="fa-solid fa-right-left text-gray-500"></i>
+                                            <i className="fa-solid fa-ellipsis-vertical text-gray-600 px-2"></i>
                                         </div>
                                     ))}
                                 </div>
                             </div>
 
-                            <div className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-[480px] bg-black p-4 border-t border-dark-700">
-                                <button onClick={() => setIsTrainingStarted(true)} className="w-full bg-white text-black font-black text-lg py-4 rounded-2xl flex items-center justify-center gap-2">
+                            <div className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-[480px] bg-black/90 backdrop-blur p-5 border-t border-dark-700">
+                                <button onClick={() => { setIsTrainingStarted(true); setTrainingTime(0); setRestTime(0); }} className="w-full bg-brand-500 text-black font-black text-lg py-4 rounded-2xl flex items-center justify-center gap-2 hover:bg-brand-600 transition-colors shadow-lg shadow-brand-500/20">
                                     <i className="fa-solid fa-play"></i> Empezar Entrenamiento
                                 </button>
                             </div>
@@ -422,15 +539,15 @@
                     );
                 }
 
-                // VISTA: ENTRENAMIENTO EN CURSO (CON TABLAS)
+                // ENTRENAMIENTO EN CURSO 
                 return (
                     <div className="app-container pb-20">
-                        <header className="p-4 flex items-center justify-between sticky top-0 bg-black z-10 border-b border-dark-700">
-                            <button className="text-white font-bold"><i className="fa-solid fa-chevron-down mr-2"></i> 0:05</button>
-                            <button onClick={() => setView('cliente_listado')} className="bg-dark-700 text-white px-4 py-1.5 rounded-lg text-sm font-bold">Terminar</button>
+                        <header className="p-4 flex items-center justify-between sticky top-0 bg-black/95 backdrop-blur z-20 border-b border-dark-700 shadow-md">
+                            <button onClick={() => alert('Próximamente: Temporizador general')} className="text-brand-500 font-bold flex items-center gap-2 hover:text-white transition-colors"><i className="fa-solid fa-chevron-down"></i> {formatTime(trainingTime)}</button>
+                            <button onClick={() => { setIsTrainingStarted(false); alert(`¡Entrenamiento finalizado! 💪\nTiempo: ${formatTime(trainingTime)}`); setView('cliente_listado'); }} className="bg-dark-700 text-brand-500 px-5 py-2 rounded-xl text-sm font-bold border border-dark-600 hover:bg-dark-600 transition-colors shadow-sm">Terminar</button>
                         </header>
 
-                        <div className="p-4">
+                        <div className="p-4 pt-6">
                             {currentDay?.exercises.map(ex => (
                                 <ClientExerciseRow 
                                     key={`${ex.id}-${activeWeek}`} 
@@ -438,9 +555,19 @@
                                     progressData={globalData.progress?.[currentUser.id]?.[activeWeek]?.[ex.id]} 
                                     previousWeekData={globalData.progress?.[currentUser.id]?.[activeWeek > 1 ? activeWeek - 1 : 1]?.[ex.id]}
                                     onSaveProgress={(setsArray) => saveClientProgress(ex.id, setsArray, activeWeek)} 
+                                    onStartRest={startRest}
                                 />
                             ))}
                         </div>
+
+                        {/* Cronómetro Flotante */}
+                        {restTime > 0 && (
+                            <div className="fixed bottom-10 left-1/2 transform -translate-x-1/2 bg-brand-500 text-black px-6 py-3 rounded-full font-bold text-lg shadow-[0_0_25px_rgba(167,199,231,0.6)] flex items-center gap-3 z-50 animate-bounce">
+                                <i className="fa-solid fa-stopwatch animate-pulse text-xl"></i>
+                                {Math.floor(restTime/60)}:{(restTime%60).toString().padStart(2,'0')}
+                                <button onClick={() => setRestTime(0)} className="ml-2 bg-black/20 hover:bg-black/40 transition-colors rounded-full w-8 h-8 flex items-center justify-center"><i className="fa-solid fa-xmark"></i></button>
+                            </div>
+                        )}
                     </div>
                 );
             }
