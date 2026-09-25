@@ -64,7 +64,6 @@
         const SUPABASE_KEY = 'sb_publishable_5WHz-KSuu5BaV08EGXJJmg_dkVOUJwy';
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // Base de datos de ejercicios para el autocompletado
         const EXERCISE_DB = [
             "Sentadilla Libre (Barra)", "Sentadilla Búlgara", "Sentadilla Hack", "Prensa de Piernas",
             "Peso Muerto Rumano", "Peso Muerto Convencional", "Hip Thrust", "Extensión de Cuádriceps",
@@ -106,6 +105,34 @@
             } catch(e) { console.log("Audio falló", e); }
         };
 
+        // --- MOTOR DE DOSIFICACIÓN AUTOMÁTICA SEGÚN EL MÉTODO DEL ALUMNO ---
+        const getPrescription = (method, week, defaultSets, defaultReps) => {
+            let sets = defaultSets;
+            let reps = defaultReps;
+            let labelInfo = "";
+
+            if (method === 'carga_simple') {
+                // Método 2: Por variación por carga simple (2x1+1) con progresión de 3 mesociclos
+                if (week === 1) { sets = 4; reps = 6; labelInfo = "Sem 1: Bajo RIR (3-4 reps en recámara) para líquido sinovial."; }
+                else if (week === 2) { sets = 4; reps = 4; labelInfo = "Sem 2: Menos reps, más peso (acercamiento a RM)."; }
+                else if (week === 3) { sets = 3; reps = 6; labelInfo = "Sem 3 (Descarga): Menos series y peso para síntesis proteica."; }
+                else if (week === 4) { sets = 4; reps = 6; labelInfo = "Sem 4: Superación de carga respecto a la semana 1."; }
+            } 
+            else if (method === 'ondulada') {
+                // Método 3: Por carga ondulada (Intrasemanal)
+                if (week === 1) { sets = 4; reps = 8; labelInfo = "Sem 1 (Día 1): Volumen alto (8 reps)."; }
+                else if (week === 2) { sets = 4; reps = 6; labelInfo = "Sem 2 (Día 1): Aumento de intensidad (6 reps)."; }
+                else if (week === 3) { sets = 3; reps = 5; labelInfo = "Sem 3 (Descarga): Volumen reducido."; }
+                else if (week === 4) { sets = 4; reps = 4; labelInfo = "Sem 4 (Pico): Búsqueda de alta intensidad / 2RM."; }
+            }
+            else {
+                // Método 1: Variación de contenidos (Novatos) u otro estándar
+                labelInfo = `Mesociclo de Adaptación (Var. Contenidos)`;
+            }
+
+            return { sets, reps, labelInfo };
+        };
+
         // --- COMPONENTE: EDICIÓN DE EJERCICIO (PROFESOR) ---
         function ExerciseRow({ exercise, onUpdate, onDelete }) {
             const [localEx, setLocalEx] = useState(exercise);
@@ -120,7 +147,7 @@
                 setTimeout(() => {
                     setShowSuggestions(false);
                     const finalEx = { ...localEx };
-                    if (!finalEx.rest) finalEx.rest = '90s'; // Si deja el reloj vacío, forzamos 90s al deseleccionar
+                    if (!finalEx.rest) finalEx.rest = '90s';
                     setLocalEx(finalEx);
                     onUpdate(finalEx);
                 }, 200); 
@@ -168,10 +195,10 @@
                     </div>
                     <div className="flex gap-4 text-sm text-gray-400 items-center overflow-x-auto hide-scrollbar pb-1">
                         <div className="flex items-center gap-1">
-                            <input className="w-8 bg-dark-600 rounded p-1 text-center text-white outline-none focus:border focus:border-brand-500" value={localEx.sets} onChange={(e) => handleChange('sets', e.target.value)} onBlur={handleBlur} /> s
+                            <input className="w-8 bg-dark-600 rounded p-1 text-center text-white outline-none focus:border focus:border-brand-500" value={localEx.sets} onChange={(e) => handleChange('sets', e.target.value)} onBlur={handleBlur} /> s (Base)
                         </div>
                         <div className="flex items-center gap-1">
-                            <input className="w-12 bg-dark-600 rounded p-1 text-center text-white outline-none focus:border focus:border-brand-500" value={localEx.reps} onChange={(e) => handleChange('reps', e.target.value)} onBlur={handleBlur} /> r
+                            <input className="w-12 bg-dark-600 rounded p-1 text-center text-white outline-none focus:border focus:border-brand-500" value={localEx.reps} onChange={(e) => handleChange('reps', e.target.value)} onBlur={handleBlur} /> r (Base)
                         </div>
                         <div className="text-xs flex items-center gap-1">
                             RIR <input className="w-8 bg-dark-600 rounded p-1 text-center text-white outline-none focus:border focus:border-brand-500" value={localEx.rir} onChange={(e) => handleChange('rir', e.target.value)} onBlur={handleBlur} />
@@ -196,10 +223,14 @@
         }
 
         // --- COMPONENTE: EJECUCIÓN DE EJERCICIO (ALUMNO) ---
-        function ClientExerciseRow({ exercise, progressData, previousWeekData, allWeeksData, onSaveProgress, onStartRest, showToast }) {
-            const baseSetsCount = parseInt(exercise.sets) || 1;
+        function ClientExerciseRow({ exercise, clientMethod, activeWeek, progressData, previousWeekData, allWeeksData, onSaveProgress, onStartRest, showToast }) {
+            
+            // Calculamos series y repes automáticas según el método y la semana elegida
+            const prescription = getPrescription(clientMethod, activeWeek, exercise.sets, exercise.reps);
+            const targetSets = prescription.sets;
+
             const isUni = exercise.isUnilateral === true;
-            const totalRows = isUni ? baseSetsCount * 2 : baseSetsCount;
+            const totalRows = isUni ? targetSets * 2 : targetSets;
 
             const [showNotes, setShowNotes] = useState(false);
             const [showHistory, setShowHistory] = useState(false);
@@ -259,13 +290,21 @@
 
             return (
                 <div className="mb-10">
-                    <div className="flex items-center gap-4 mb-4">
+                    <div className="flex items-center gap-4 mb-2">
                         <div className="w-12 h-12 bg-dark-700 rounded-lg flex items-center justify-center text-brand-500 shadow-sm border border-dark-600">
                             <i className="fa-solid fa-dumbbell text-xl"></i>
                         </div>
-                        <div>
+                        <div className="flex-1">
                             <h4 className="font-bold text-lg text-white leading-tight">{exercise.name}</h4>
+                            <p className="text-xs text-brand-500 font-semibold mt-0.5">
+                                Planificado: <span className="text-white">{prescription.sets} series x {prescription.reps} reps</span>
+                            </p>
                         </div>
+                    </div>
+
+                    {/* Nota metodológica para el alumno */}
+                    <div className="mb-4 bg-dark-800/80 border border-dark-600 px-3 py-1.5 rounded-lg text-[11px] text-gray-400 italic">
+                        <i className="fa-solid fa-circle-info text-brand-500 mr-1"></i> {prescription.labelInfo}
                     </div>
 
                     <div className="flex gap-2 mb-4 overflow-x-auto hide-scrollbar">
@@ -423,7 +462,6 @@
                 return () => clearInterval(restInterval);
             }, [restTime]);
 
-            // Función mejorada para leer cualquier tiempo de descanso
             const startRest = (timeString) => {
                 if (!timeString) { setRestTime(90); return; }
                 let str = timeString.toString().toLowerCase();
@@ -471,7 +509,7 @@
             const addClient = () => {
                 if (!newClientName.trim()) return;
                 const newData = JSON.parse(JSON.stringify(globalData));
-                const newClient = { id: Date.now().toString(), name: newClientName, pin: Math.floor(1000 + Math.random() * 9000).toString(), method: 'Estándar' };
+                const newClient = { id: Date.now().toString(), name: newClientName, pin: Math.floor(1000 + Math.random() * 9000).toString(), method: 'contenidos' };
                 if(!newData.clients) newData.clients = [];
                 if(!newData.routines) newData.routines = {};
                 if(!newData.progress) newData.progress = {};
@@ -488,7 +526,7 @@
                 if (clientIndex !== -1) {
                     newData.clients[clientIndex].method = methodValue;
                     saveData(newData);
-                    showToast('Sistema de carga actualizado');
+                    showToast('Método de mesociclo actualizado');
                 }
             };
 
@@ -624,22 +662,20 @@
                                         </header>
                                         
                                         <div className="p-4">
-                                            {/* Nuevo panel de Selección de Método de Carga */}
+                                            {/* Selector Oficial de Métodos de Dosificación */}
                                             <div className="mb-8 bg-dark-700 p-4 rounded-2xl border border-dark-600 shadow-inner">
                                                 <h3 className="font-bold text-xs text-gray-400 mb-2 uppercase tracking-widest flex items-center gap-2">
-                                                    <i className="fa-solid fa-sliders text-brand-500"></i> Sistema de Carga (Mesociclo)
+                                                    <i className="fa-solid fa-graduation-cap text-brand-500"></i> Método de Dosificación de Carga
                                                 </h3>
                                                 <div className="relative">
                                                     <select 
-                                                        className="w-full bg-dark-800 text-white p-3 rounded-xl outline-none border border-dark-600 focus:border-brand-500 appearance-none font-medium cursor-pointer"
-                                                        value={globalData.clients.find(c => c.id === activeClient.id)?.method || 'Estándar'}
+                                                        className="w-full bg-dark-800 text-white p-3 rounded-xl outline-none border border-dark-600 focus:border-brand-500 appearance-none font-medium cursor-pointer text-sm"
+                                                        value={globalData.clients.find(c => c.id === activeClient.id)?.method || 'contenidos'}
                                                         onChange={(e) => updateClientMethod(activeClient.id, e.target.value)}
                                                     >
-                                                        <option value="Estándar">Estándar (Sin especificar)</option>
-                                                        <option value="Sobrecarga Progresiva Básica">Sobrecarga Progresiva Básica</option>
-                                                        <option value="Periodización Lineal">Periodización Lineal</option>
-                                                        <option value="Periodización Ondulatoria">Periodización Ondulatoria</option>
-                                                        <option value="Basado en RIR / RPE">Basado en RIR / RPE</option>
+                                                        <option value="contenidos">1. Por variación de contenidos (Novatos / Cambio de ejercicios)</option>
+                                                        <option value="carga_simple">2. Por variación por carga simple (2x1+1 Progresivo)</option>
+                                                        <option value="ondulada">3. Por carga ondulada (Intrasemanal)</option>
                                                     </select>
                                                     <i className="fa-solid fa-chevron-down absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 pointer-events-none"></i>
                                                 </div>
@@ -760,18 +796,22 @@
                                     </div>
 
                                     <div className="space-y-6">
-                                        {(globalData.routines[currentUser.id]?.find(d => d.id === activeDayId) || {}).exercises?.map((ex) => (
-                                            <div key={ex.id} className="flex gap-4 items-center bg-dark-800 p-3 rounded-2xl border border-dark-700">
-                                                <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center shrink-0 shadow-md">
-                                                    <i className="fa-solid fa-dumbbell text-black text-xl"></i>
+                                        {(globalData.routines[currentUser.id]?.find(d => d.id === activeDayId) || {}).exercises?.map((ex) => {
+                                            const clientMethod = currentUser.method || 'contenidos';
+                                            const pres = getPrescription(clientMethod, activeWeek, ex.sets, ex.reps);
+                                            return (
+                                                <div key={ex.id} className="flex gap-4 items-center bg-dark-800 p-3 rounded-2xl border border-dark-700">
+                                                    <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center shrink-0 shadow-md">
+                                                        <i className="fa-solid fa-dumbbell text-black text-xl"></i>
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        <p className="text-xs text-brand-500 font-bold mb-1 tracking-wider">{pres.sets} SERIES x {pres.reps} REPS (Sem. {activeWeek})</p>
+                                                        <p className="font-bold text-white text-base leading-tight">{ex.name}</p>
+                                                    </div>
+                                                    <i className="fa-solid fa-ellipsis-vertical text-gray-600 px-2"></i>
                                                 </div>
-                                                <div className="flex-1">
-                                                    <p className="text-xs text-brand-500 font-bold mb-1 tracking-wider">{ex.sets} SERIES x {ex.reps} REPS</p>
-                                                    <p className="font-bold text-white text-base leading-tight">{ex.name}</p>
-                                                </div>
-                                                <i className="fa-solid fa-ellipsis-vertical text-gray-600 px-2"></i>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 </div>
 
@@ -793,6 +833,8 @@
                                         <ClientExerciseRow 
                                             key={`${ex.id}-${activeWeek}`} 
                                             exercise={ex} 
+                                            clientMethod={currentUser.method || 'contenidos'}
+                                            activeWeek={activeWeek}
                                             progressData={globalData.progress?.[currentUser.id]?.[activeWeek]?.[ex.id]} 
                                             previousWeekData={globalData.progress?.[currentUser.id]?.[activeWeek > 1 ? activeWeek - 1 : 1]?.[ex.id]}
                                             allWeeksData={globalData.progress?.[currentUser.id]}
