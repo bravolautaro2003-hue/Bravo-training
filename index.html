@@ -119,8 +119,11 @@
             const handleBlur = () => {
                 setTimeout(() => {
                     setShowSuggestions(false);
-                    onUpdate(localEx);
-                }, 200); // Pequeño retraso para permitir el clic en la sugerencia
+                    const finalEx = { ...localEx };
+                    if (!finalEx.rest) finalEx.rest = '90s'; // Si deja el reloj vacío, forzamos 90s al deseleccionar
+                    setLocalEx(finalEx);
+                    onUpdate(finalEx);
+                }, 200); 
             };
 
             const selectSuggestion = (name) => {
@@ -133,7 +136,7 @@
             const suggestions = EXERCISE_DB.filter(ex => 
                 ex.toLowerCase().includes((localEx.name || '').toLowerCase()) && 
                 localEx.name !== ex
-            ).slice(0, 5); // Mostrar solo las 5 mejores coincidencias
+            ).slice(0, 5);
 
             return (
                 <div className="bg-dark-700 p-4 rounded-xl mb-4 border border-dark-600">
@@ -147,7 +150,6 @@
                                 onFocus={() => setShowSuggestions(true)}
                                 placeholder="Nombre del ejercicio" 
                             />
-                            {/* Menú de Autocompletado */}
                             {showSuggestions && localEx.name && suggestions.length > 0 && (
                                 <div className="absolute z-50 top-full left-0 w-full mt-1 bg-dark-800 border border-dark-600 rounded-lg shadow-xl overflow-hidden">
                                     {suggestions.map((sug, idx) => (
@@ -175,7 +177,14 @@
                             RIR <input className="w-8 bg-dark-600 rounded p-1 text-center text-white outline-none focus:border focus:border-brand-500" value={localEx.rir} onChange={(e) => handleChange('rir', e.target.value)} onBlur={handleBlur} />
                         </div>
                         <div className="flex items-center gap-1">
-                            <i className="fa-regular fa-clock"></i> <input className="w-12 bg-dark-600 rounded p-1 text-center text-white outline-none focus:border focus:border-brand-500" value={localEx.rest || '90s'} onChange={(e) => handleChange('rest', e.target.value)} onBlur={handleBlur} placeholder="90s" />
+                            <i className="fa-regular fa-clock"></i> 
+                            <input 
+                                className="w-12 bg-dark-600 rounded p-1 text-center text-white outline-none focus:border focus:border-brand-500" 
+                                value={localEx.rest !== undefined ? localEx.rest : '90s'} 
+                                onChange={(e) => handleChange('rest', e.target.value)} 
+                                onBlur={handleBlur} 
+                                placeholder="90s" 
+                            />
                         </div>
                     </div>
                     <div className="mt-4 pt-3 border-t border-dark-600 flex items-center gap-2">
@@ -221,7 +230,7 @@
                 onSaveProgress(newSets, localNote);
                 
                 if (field === 'done' && value === true && !wasDone) {
-                    onStartRest(exercise.rest || '90s');
+                    onStartRest(exercise.rest);
                 }
             };
 
@@ -414,10 +423,13 @@
                 return () => clearInterval(restInterval);
             }, [restTime]);
 
+            // Función mejorada para leer cualquier tiempo de descanso
             const startRest = (timeString) => {
-                let t = parseInt(timeString);
-                if (timeString.toLowerCase().includes('m')) t = t * 60;
-                else if (isNaN(t)) t = 90; 
+                if (!timeString) { setRestTime(90); return; }
+                let str = timeString.toString().toLowerCase();
+                let t = parseInt(str);
+                if (str.includes('m')) t = t * 60;
+                else if (isNaN(t) || t <= 0) t = 90; 
                 setRestTime(t);
             };
 
@@ -459,7 +471,7 @@
             const addClient = () => {
                 if (!newClientName.trim()) return;
                 const newData = JSON.parse(JSON.stringify(globalData));
-                const newClient = { id: Date.now().toString(), name: newClientName, pin: Math.floor(1000 + Math.random() * 9000).toString() };
+                const newClient = { id: Date.now().toString(), name: newClientName, pin: Math.floor(1000 + Math.random() * 9000).toString(), method: 'Estándar' };
                 if(!newData.clients) newData.clients = [];
                 if(!newData.routines) newData.routines = {};
                 if(!newData.progress) newData.progress = {};
@@ -468,6 +480,16 @@
                 saveData(newData);
                 setNewClientName('');
                 showToast(`¡Alumno creado! PIN: ${newClient.pin}`);
+            };
+
+            const updateClientMethod = (clientId, methodValue) => {
+                const newData = JSON.parse(JSON.stringify(globalData));
+                const clientIndex = newData.clients.findIndex(c => c.id === clientId);
+                if (clientIndex !== -1) {
+                    newData.clients[clientIndex].method = methodValue;
+                    saveData(newData);
+                    showToast('Sistema de carga actualizado');
+                }
             };
 
             const addDay = (clientId) => {
@@ -497,7 +519,7 @@
                     name: dayToClone.name + " (Copia)",
                     exercises: dayToClone.exercises.map(ex => ({
                         ...ex,
-                        id: Math.random().toString(36).substr(2, 9) // Nuevo ID para cada ejercicio clonado
+                        id: Math.random().toString(36).substr(2, 9)
                     }))
                 };
 
@@ -602,7 +624,28 @@
                                         </header>
                                         
                                         <div className="p-4">
-                                            <h3 className="font-bold text-xl mb-4 text-white">Tus plantillas</h3>
+                                            {/* Nuevo panel de Selección de Método de Carga */}
+                                            <div className="mb-8 bg-dark-700 p-4 rounded-2xl border border-dark-600 shadow-inner">
+                                                <h3 className="font-bold text-xs text-gray-400 mb-2 uppercase tracking-widest flex items-center gap-2">
+                                                    <i className="fa-solid fa-sliders text-brand-500"></i> Sistema de Carga (Mesociclo)
+                                                </h3>
+                                                <div className="relative">
+                                                    <select 
+                                                        className="w-full bg-dark-800 text-white p-3 rounded-xl outline-none border border-dark-600 focus:border-brand-500 appearance-none font-medium cursor-pointer"
+                                                        value={globalData.clients.find(c => c.id === activeClient.id)?.method || 'Estándar'}
+                                                        onChange={(e) => updateClientMethod(activeClient.id, e.target.value)}
+                                                    >
+                                                        <option value="Estándar">Estándar (Sin especificar)</option>
+                                                        <option value="Sobrecarga Progresiva Básica">Sobrecarga Progresiva Básica</option>
+                                                        <option value="Periodización Lineal">Periodización Lineal</option>
+                                                        <option value="Periodización Ondulatoria">Periodización Ondulatoria</option>
+                                                        <option value="Basado en RIR / RPE">Basado en RIR / RPE</option>
+                                                    </select>
+                                                    <i className="fa-solid fa-chevron-down absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 pointer-events-none"></i>
+                                                </div>
+                                            </div>
+
+                                            <h3 className="font-bold text-xl mb-4 text-white">Plantillas del Alumno</h3>
                                             <div className="space-y-4">
                                                 {(globalData.routines[activeClient.id] || []).map(day => (
                                                     <div key={day.id} onClick={() => setActiveDayId(day.id)} className="flex items-center gap-4 cursor-pointer bg-dark-700 p-3 rounded-2xl border border-dark-600 hover:border-brand-500 transition-colors">
