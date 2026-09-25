@@ -164,7 +164,7 @@
             };
 
             const handleWeekConfigChange = (weekNum, field, value) => {
-                const updatedWeeks = { ...(localEx.weeks || {}) };
+                const updatedWeeks = structuredClone(localEx.weeks || {});
                 if (!updatedWeeks[weekNum]) {
                     updatedWeeks[weekNum] = { sets: localEx.sets || '4', reps: localEx.reps || '10' };
                 }
@@ -330,7 +330,7 @@
             }, [progressData, totalRows, activeWeek]);
 
             const updateSetLocal = (index, field, value) => {
-                const newSets = [...localSets];
+                const newSets = structuredClone(localSets);
                 newSets[index][field] = value;
                 setLocalSets(newSets);
             };
@@ -341,7 +341,7 @@
 
             const toggleDone = (index) => {
                 unlockAudio();
-                const newSets = [...localSets];
+                const newSets = structuredClone(localSets);
                 const wasDone = newSets[index].done;
                 newSets[index].done = !wasDone;
                 setLocalSets(newSets);
@@ -362,7 +362,7 @@
 
             const addSet = () => {
                 const addCount = isUni ? 2 : 1;
-                const newSets = [...localSets];
+                const newSets = structuredClone(localSets);
                 for(let i=0; i<addCount; i++){
                     newSets.push({ weight: '', reps: '', rir: '', done: false, type: 'N' });
                 }
@@ -378,7 +378,6 @@
                 handleSetBlur();
             };
 
-            // Función para ajuste rápido de peso (+2.5kg o -2.5kg)
             const adjustWeight = (index, amount) => {
                 const currentVal = parseFloat(localSets[index].weight) || 0;
                 const newVal = Math.max(0, currentVal + amount);
@@ -615,14 +614,25 @@
             const fetchData = async () => {
                 try {
                     const { data } = await supabase.from('bravo_state').select('data').eq('id', 'main').single();
-                    if (data) setGlobalData(data.data);
-                } catch (e) { console.error(e); }
+                    if (data && data.data) {
+                        setGlobalData(data.data);
+                    } else {
+                        // Estructura por defecto si no existe la fila (Previene errores críticos)
+                        setGlobalData({ profesorPin: '0000', clients: [], routines: {}, progress: {} });
+                    }
+                } catch (e) { 
+                    console.error(e);
+                    setGlobalData({ profesorPin: '0000', clients: [], routines: {}, progress: {} });
+                }
                 setLoading(false);
             };
 
             const saveData = async (newData) => {
                 setGlobalData(newData);
-                await supabase.from('bravo_state').update({ data: newData }).eq('id', 'main');
+                const { error } = await supabase.from('bravo_state').update({ data: newData }).eq('id', 'main');
+                if (error) {
+                    showToast('Error de red al guardar en la nube', 'error');
+                }
             };
 
             const handleLogin = () => {
@@ -642,7 +652,7 @@
 
             const addClient = () => {
                 if (!newClientName.trim()) return;
-                const newData = JSON.parse(JSON.stringify(globalData));
+                const newData = structuredClone(globalData);
                 const newClient = { id: Date.now().toString(), name: newClientName, pin: Math.floor(1000 + Math.random() * 9000).toString() };
                 if(!newData.clients) newData.clients = [];
                 if(!newData.routines) newData.routines = {};
@@ -655,7 +665,7 @@
             };
 
             const addDay = (clientId) => {
-                const newData = JSON.parse(JSON.stringify(globalData));
+                const newData = structuredClone(globalData);
                 const newId = Date.now().toString();
                 newData.routines[clientId].push({ 
                     id: newId, 
@@ -668,7 +678,7 @@
             };
 
             const updateDayName = (clientId, dayId, newName) => {
-                const newData = JSON.parse(JSON.stringify(globalData));
+                const newData = structuredClone(globalData);
                 const day = newData.routines[clientId].find(d => d.id === dayId);
                 if(day) day.name = newName;
                 saveData(newData);
@@ -677,7 +687,7 @@
             const deleteDay = (clientId, dayId) => {
                 const confirmacion = window.confirm('¿Seguro que querés borrar esta plantilla entera?');
                 if (!confirmacion) return;
-                const newData = JSON.parse(JSON.stringify(globalData));
+                const newData = structuredClone(globalData);
                 newData.routines[clientId] = newData.routines[clientId].filter(d => d.id !== dayId);
                 saveData(newData);
                 setActiveDayId(null);
@@ -685,7 +695,7 @@
             };
 
             const cloneDay = (clientId, dayId) => {
-                const newData = JSON.parse(JSON.stringify(globalData));
+                const newData = structuredClone(globalData);
                 const dayToClone = newData.routines[clientId].find(d => d.id === dayId);
                 if (!dayToClone) return;
 
@@ -710,7 +720,7 @@
             };
 
             const addSection = (clientId, dayId) => {
-                const newData = JSON.parse(JSON.stringify(globalData));
+                const newData = structuredClone(globalData);
                 const day = newData.routines[clientId].find(d => d.id === dayId);
                 if(!day.sections) day.sections = [];
                 day.sections.push({ id: Math.random().toString(36).substr(2, 9), name: 'Nuevo Bloque', exercises: [] });
@@ -718,7 +728,7 @@
             };
 
             const updateSectionName = (clientId, dayId, secId, newName) => {
-                const newData = JSON.parse(JSON.stringify(globalData));
+                const newData = structuredClone(globalData);
                 const day = newData.routines[clientId].find(d => d.id === dayId);
                 const sec = day.sections.find(s => s.id === secId);
                 if(sec) sec.name = newName;
@@ -726,14 +736,14 @@
             };
 
             const deleteSection = (clientId, dayId, secId) => {
-                const newData = JSON.parse(JSON.stringify(globalData));
+                const newData = structuredClone(globalData);
                 const day = newData.routines[clientId].find(d => d.id === dayId);
                 day.sections = day.sections.filter(s => s.id !== secId);
                 saveData(newData);
             };
 
             const addExerciseToSection = (clientId, dayId, secId) => {
-                const newData = JSON.parse(JSON.stringify(globalData));
+                const newData = structuredClone(globalData);
                 const day = newData.routines[clientId].find(d => d.id === dayId);
                 const sec = day.sections.find(s => s.id === secId);
                 sec.exercises.push({ id: Math.random().toString(36).substr(2, 9), name: '', sets: '4', reps: '10', rir: '2', rest: '90s', isUnilateral: false, weeks: {} });
@@ -741,7 +751,7 @@
             };
 
             const updateExerciseInSection = (clientId, dayId, secId, updatedExercise) => {
-                const newData = JSON.parse(JSON.stringify(globalData));
+                const newData = structuredClone(globalData);
                 const day = newData.routines[clientId].find(d => d.id === dayId);
                 const sec = day.sections.find(s => s.id === secId);
                 const index = sec.exercises.findIndex(e => e.id === updatedExercise.id);
@@ -750,7 +760,7 @@
             };
 
             const deleteExerciseFromSection = (clientId, dayId, secId, exerciseId) => {
-                const newData = JSON.parse(JSON.stringify(globalData));
+                const newData = structuredClone(globalData);
                 const day = newData.routines[clientId].find(d => d.id === dayId);
                 const sec = day.sections.find(s => s.id === secId);
                 sec.exercises = sec.exercises.filter(e => e.id !== exerciseId);
@@ -758,7 +768,7 @@
             };
 
             const saveClientProgress = (exerciseId, setsArray, noteString, week) => {
-                const newData = JSON.parse(JSON.stringify(globalData));
+                const newData = structuredClone(globalData);
                 if (!newData.progress[currentUser.id]) newData.progress[currentUser.id] = {};
                 if (!newData.progress[currentUser.id][week]) newData.progress[currentUser.id][week] = {};
                 if (!newData.progress[currentUser.id][week][exerciseId]) newData.progress[currentUser.id][week][exerciseId] = {};
