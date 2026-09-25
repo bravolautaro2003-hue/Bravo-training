@@ -117,16 +117,54 @@
                 else if (week === 4) { sets = 4; reps = 6; labelInfo = "Sem 4: Superación de carga (Debe levantar más que en Sem 1)."; }
             } 
             else if (method === 'ondulada') {
-                if (week === 1) { sets = 4; reps = 8; labelInfo = "Sem 1 (Día 1): Volumen alto de adaptación."; }
-                else if (week === 2) { sets = 4; reps = 6; labelInfo = "Sem 2 (Día 1): Incremento de intensidad."; }
+                if (week === 1) { sets = 4; reps = 8; labelInfo = "Sem 1 (Día 1): Volumen alto de adaptación (8 reps)."; }
+                else if (week === 2) { sets = 4; reps = 6; labelInfo = "Sem 2 (Día 1): Incremento de intensidad (6 reps)."; }
                 else if (week === 3) { sets = 3; reps = 5; labelInfo = "Sem 3 (Descarga): Reducción de estímulo intrasemanal."; }
                 else if (week === 4) { sets = 4; reps = 4; labelInfo = "Sem 4 (Pico): Búsqueda cercana a 2RM."; }
             }
+            else if (method === 'libre') {
+                labelInfo = `Plantilla Libre / Personalizada: Series y repeticiones configuradas a mano.`;
+            }
             else {
-                labelInfo = `Mes 1-2 (Variación de Contenidos): Variar ejercicios complejos cada 3-4 semanas para evitar estancamiento.`;
+                labelInfo = `Método 1 (Variación de Contenidos): Variar ejercicios cada 3-4 semanas para provocar desequilibrio en la homeostasis.`;
             }
 
             return { sets, reps, labelInfo };
+        };
+
+        // --- GENERADOR DE PLANTILLAS AUTOMÁTICAS SEGÚN MÉTODO ---
+        const generateTemplateByMethod = (method) => {
+            const id = Date.now().toString();
+            let name = "Rutina Base";
+            let exercises = [];
+
+            if (method === 'carga_simple') {
+                name = "Rutina Carga Simple (2x1+1)";
+                exercises = [
+                    { id: '1', name: '', sets: '4', reps: '6', rir: '3', rest: '90s', isUnilateral: false },
+                    { id: '2', name: '', sets: '4', reps: '6', rir: '2', rest: '90s', isUnilateral: false },
+                    { id: '3', name: '', sets: '3', reps: '10', rir: '2', rest: '90s', isUnilateral: false }
+                ];
+            } else if (method === 'ondulada') {
+                name = "Rutina Carga Ondulada (Intrasemanal)";
+                exercises = [
+                    { id: '1', name: '', sets: '4', reps: '8', rir: '2', rest: '90s', isUnilateral: false },
+                    { id: '2', name: '', sets: '4', reps: '6', rir: '2', rest: '90s', isUnilateral: false }
+                ];
+            } else if (method === 'libre') {
+                name = "Plantilla Libre (Desde Cero)";
+                exercises = [
+                    { id: '1', name: '', sets: '3', reps: '10', rir: '2', rest: '90s', isUnilateral: false }
+                ];
+            } else {
+                name = "Rutina Variación de Contenidos";
+                exercises = [
+                    { id: '1', name: '', sets: '5', reps: '6', rir: '2', rest: '90s', isUnilateral: false },
+                    { id: '2', name: '', sets: '4', reps: '8', rir: '2', rest: '90s', isUnilateral: false }
+                ];
+            }
+
+            return { id, name, exercises };
         };
 
         // --- COMPONENTE: EDICIÓN DE DÍA (PROFESOR) ---
@@ -156,7 +194,7 @@
             );
         }
 
-        // --- COMPONENTE: EDICIÓN DE EJERCICIO (PROFESOR) - Bug de tildes solucionado ---
+        // --- COMPONENTE: EDICIÓN DE EJERCICIO (PROFESOR) ---
         function ExerciseRow({ exercise, onUpdate, onDelete }) {
             const [localName, setLocalName] = useState(exercise.name || '');
             const [localSets, setLocalSets] = useState(exercise.sets || '4');
@@ -197,7 +235,7 @@
                 setTimeout(() => {
                     setShowSuggestions(false);
                     triggerUpdate({ name: localName });
-                }, 200);
+                }, 250);
             };
 
             const selectSuggestion = (name) => {
@@ -228,7 +266,7 @@
                                     {suggestions.map((sug, idx) => (
                                         <div 
                                             key={idx} 
-                                            onClick={() => selectSuggestion(sug)}
+                                            onMouseDown={(e) => { e.preventDefault(); selectSuggestion(sug); }}
                                             className="px-4 py-3 text-sm text-gray-300 hover:bg-brand-500 hover:text-black cursor-pointer border-b border-dark-700 last:border-0 transition-colors"
                                         >
                                             {sug}
@@ -343,9 +381,11 @@
 
             let weightStatus = null;
             if (activeWeek === 4 && week1Data && week1Data.length > 0) {
-                const maxWeek1 = Math.max(...week1Data.map(s => parseFloat(s.weight) || 0));
-                const maxWeek4 = Math.max(...localSets.map(s => parseFloat(s.weight) || 0));
-                if (maxWeek4 > 0 && maxWeek1 > 0) {
+                const validWeek1 = week1Data.map(s => parseFloat(s.weight)).filter(w => !isNaN(w) && w > 0);
+                const validWeek4 = localSets.map(s => parseFloat(s.weight)).filter(w => !isNaN(w) && w > 0);
+                if (validWeek4.length > 0 && validWeek1.length > 0) {
+                    const maxWeek1 = Math.max(...validWeek1);
+                    const maxWeek4 = Math.max(...validWeek4);
                     weightStatus = maxWeek4 > maxWeek1 ? 'success' : 'warning';
                 }
             }
@@ -488,6 +528,7 @@
             const [currentUser, setCurrentUser] = useState(null);
             const [pinInput, setPinInput] = useState('');
             const [newClientName, setNewClientName] = useState('');
+            const [newClientMethod, setNewClientMethod] = useState('contenidos');
             const [activeClient, setActiveClient] = useState(null);
             const [activeDayId, setActiveDayId] = useState(null);
             
@@ -505,10 +546,16 @@
             useEffect(() => {
                 fetchData();
                 const channel = supabase.channel('realtime_sync').on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'bravo_state' }, (payload) => {
-                    if(payload && payload.new) setGlobalData(payload.new.data);
+                    if(payload && payload.new) {
+                        setGlobalData(payload.new.data);
+                        if (currentUser) {
+                            const updatedClient = payload.new.data.clients?.find(c => c.id === currentUser.id);
+                            if (updatedClient) setCurrentUser(updatedClient);
+                        }
+                    }
                 }).subscribe();
                 return () => { supabase.removeChannel(channel); };
-            }, []);
+            }, [currentUser?.id]);
 
             useEffect(() => {
                 let interval = null;
@@ -581,12 +628,16 @@
             const addClient = () => {
                 if (!newClientName.trim()) return;
                 const newData = JSON.parse(JSON.stringify(globalData));
-                const newClient = { id: Date.now().toString(), name: newClientName, pin: Math.floor(1000 + Math.random() * 9000).toString(), method: 'contenidos' };
+                const newClient = { id: Date.now().toString(), name: newClientName, pin: Math.floor(1000 + Math.random() * 9000).toString(), method: newClientMethod };
                 if(!newData.clients) newData.clients = [];
                 if(!newData.routines) newData.routines = {};
                 if(!newData.progress) newData.progress = {};
                 newData.clients.push(newClient);
-                newData.routines[newClient.id] = [];
+                
+                // Generar automáticamente la primera plantilla basada en el método seleccionado
+                const initialTemplate = generateTemplateByMethod(newClientMethod);
+                newData.routines[newClient.id] = [initialTemplate];
+
                 saveData(newData);
                 setNewClientName('');
                 showToast(`¡Alumno creado! PIN: ${newClient.pin}`);
@@ -602,11 +653,15 @@
                 }
             };
 
-            const addDay = (clientId) => {
+            const addDay = (clientId, customMethod = null) => {
                 const newData = JSON.parse(JSON.stringify(globalData));
-                const newId = Date.now().toString();
-                newData.routines[clientId].push({ id: newId, name: "Nueva Plantilla", exercises: [] });
+                const clientMethod = customMethod || newData.clients.find(c => c.id === clientId)?.method || 'contenidos';
+                const newTemplate = generateTemplateByMethod(clientMethod);
+                
+                if(!newData.routines[clientId]) newData.routines[clientId] = [];
+                newData.routines[clientId].push(newTemplate);
                 saveData(newData);
+                showToast(`Plantilla "${newTemplate.name}" generada`);
             };
 
             const deleteDay = (clientId, dayId) => {
@@ -737,7 +792,7 @@
                                         </header>
                                         
                                         <div className="p-4">
-                                            <div className="mb-8 bg-dark-700 p-4 rounded-2xl border border-dark-600 shadow-inner">
+                                            <div className="mb-6 bg-dark-700 p-4 rounded-2xl border border-dark-600 shadow-inner">
                                                 <h3 className="font-bold text-xs text-gray-400 mb-2 uppercase tracking-widest flex items-center gap-2">
                                                     <i className="fa-solid fa-graduation-cap text-brand-500"></i> Método de Dosificación de Carga
                                                 </h3>
@@ -750,10 +805,17 @@
                                                         <option value="contenidos">1. Por variación de contenidos (Novatos / Cambio de ejercicios)</option>
                                                         <option value="carga_simple">2. Por variación por carga simple (2x1+1 Progresivo)</option>
                                                         <option value="ondulada">3. Por carga ondulada (Intrasemanal)</option>
+                                                        <option value="libre">4. Plantilla Libre / Personalizada</option>
                                                     </select>
                                                     <i className="fa-solid fa-chevron-down absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 pointer-events-none"></i>
                                                 </div>
                                             </div>
+
+                                            {(!globalData.clients.find(c => c.id === activeClient.id)?.method || globalData.clients.find(c => c.id === activeClient.id)?.method === 'contenidos') && (
+                                                <div className="mb-6 bg-dark-800 border border-dark-600 p-3 rounded-xl text-xs text-gray-400 leading-relaxed">
+                                                    <i className="fa-solid fa-circle-info text-brand-500 mr-1"></i> <strong className="text-white">Recordatorio Metodológico:</strong> En novatos, variar los ejercicios cada 3-4 semanas (ej. de subida al cajón a sentadilla a una pierna) para provocar desequilibrio en la homeostasis y evitar adaptaciones nulas.
+                                                </div>
+                                            )}
 
                                             <h3 className="font-bold text-xl mb-4 text-white">Plantillas del Alumno</h3>
                                             <div className="space-y-4">
@@ -773,9 +835,16 @@
                                                     </div>
                                                 ))}
                                             </div>
-                                            <button onClick={() => addDay(activeClient.id)} className="mt-6 flex items-center justify-center gap-3 text-black font-bold w-full bg-brand-500 p-4 rounded-xl hover:bg-brand-600 transition-colors shadow-lg shadow-brand-500/20">
-                                                <i className="fa-regular fa-folder text-xl"></i> Crear nueva plantilla
-                                            </button>
+                                            
+                                            {/* Botones de creación de plantilla (Automática por método o Libre) */}
+                                            <div className="mt-6 space-y-3">
+                                                <button onClick={() => addDay(activeClient.id)} className="flex items-center justify-center gap-3 text-black font-bold w-full bg-brand-500 p-4 rounded-xl hover:bg-brand-600 transition-colors shadow-lg shadow-brand-500/20">
+                                                    <i className="fa-regular fa-folder text-xl"></i> Crear plantilla automática (según método)
+                                                </button>
+                                                <button onClick={() => addDay(activeClient.id, 'libre')} className="flex items-center justify-center gap-3 text-brand-500 font-bold w-full bg-dark-700 p-4 rounded-xl border border-dark-600 hover:bg-dark-600 transition-colors">
+                                                    <i className="fa-solid fa-plus text-xl"></i> Crear plantilla desde cero (Libre)
+                                                </button>
+                                            </div>
                                         </div>
                                     </>
                                 )
@@ -786,9 +855,26 @@
                                         <button onClick={() => setView('home')} className="text-brand-500 hover:text-white transition-colors flex items-center gap-2 font-bold"><i className="fa-solid fa-arrow-right-from-bracket"></i> Salir</button>
                                     </header>
                                     <div className="p-5 space-y-3">
-                                        <div className="flex gap-2 bg-dark-800 p-2 rounded-2xl border border-dark-600 shadow-inner mb-6">
-                                            <input className="flex-1 bg-transparent px-4 outline-none text-sm text-white focus:placeholder-gray-600" placeholder="Nombre del alumno nuevo..." value={newClientName} onChange={(e) => setNewClientName(e.target.value)} />
-                                            <button onClick={addClient} className="bg-brand-500 rounded-xl w-10 h-10 flex items-center justify-center text-black hover:bg-brand-600 transition-colors shadow-md shadow-brand-500/30"><i className="fa-solid fa-plus"></i></button>
+                                        {/* Formulario de Alta de Alumno con selección previa de Método */}
+                                        <div className="bg-dark-800 p-4 rounded-2xl border border-dark-600 shadow-inner mb-6 space-y-3">
+                                            <h3 className="font-bold text-xs text-gray-400 uppercase tracking-widest">Nuevo Alumno</h3>
+                                            <input className="w-full bg-dark-700 text-white p-3 rounded-xl outline-none text-sm border border-dark-600 focus:border-brand-500 placeholder-gray-500" placeholder="Nombre del alumno..." value={newClientName} onChange={(e) => setNewClientName(e.target.value)} />
+                                            <div className="relative">
+                                                <select 
+                                                    className="w-full bg-dark-700 text-white p-3 rounded-xl outline-none border border-dark-600 focus:border-brand-500 appearance-none font-medium cursor-pointer text-sm"
+                                                    value={newClientMethod}
+                                                    onChange={(e) => setNewClientMethod(e.target.value)}
+                                                >
+                                                    <option value="contenidos">Método 1: Variación de Contenidos</option>
+                                                    <option value="carga_simple">Método 2: Carga Simple (2x1+1)</option>
+                                                    <option value="ondulada">Método 3: Carga Ondulada</option>
+                                                    <option value="libre">Plantilla Libre / Desde Cero</option>
+                                                </select>
+                                                <i className="fa-solid fa-chevron-down absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 pointer-events-none"></i>
+                                            </div>
+                                            <button onClick={addClient} className="w-full bg-brand-500 text-black font-bold py-3 rounded-xl hover:bg-brand-600 transition-colors shadow-md shadow-brand-500/20 text-sm flex items-center justify-center gap-2">
+                                                <i className="fa-solid fa-user-plus"></i> Registrar Alumno
+                                            </button>
                                         </div>
 
                                         {globalData.clients?.map(client => (
@@ -821,7 +907,6 @@
                             </header>
 
                             <div className="p-5">
-                                {/* Cartel de Saludo Personalizado */}
                                 <div className="mb-6 bg-dark-700 border border-dark-600 p-4 rounded-2xl flex items-center gap-4 shadow-md">
                                     <div className="w-12 h-12 rounded-full bg-brand-500 text-black flex items-center justify-center font-black text-xl">
                                         {currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : 'A'}
