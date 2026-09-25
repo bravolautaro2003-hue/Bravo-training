@@ -105,64 +105,110 @@
             } catch(e) { console.log("Audio falló", e); }
         };
 
-        // --- MOTOR DE DOSIFICACIÓN AUTOMÁTICA SEGÚN EL MÉTODO DEL ALUMNO ---
         const getPrescription = (method, week, defaultSets, defaultReps) => {
             let sets = defaultSets;
             let reps = defaultReps;
             let labelInfo = "";
 
             if (method === 'carga_simple') {
-                // Método 2: Por variación por carga simple (2x1+1) con progresión de 3 mesociclos
-                if (week === 1) { sets = 4; reps = 6; labelInfo = "Sem 1: Bajo RIR (3-4 reps en recámara) para líquido sinovial."; }
-                else if (week === 2) { sets = 4; reps = 4; labelInfo = "Sem 2: Menos reps, más peso (acercamiento a RM)."; }
-                else if (week === 3) { sets = 3; reps = 6; labelInfo = "Sem 3 (Descarga): Menos series y peso para síntesis proteica."; }
-                else if (week === 4) { sets = 4; reps = 6; labelInfo = "Sem 4: Superación de carga respecto a la semana 1."; }
+                if (week === 1) { sets = 4; reps = 6; labelInfo = "Sem 1: Carga baja / RIR 3-4 (Líquido sinovial y cuidado articular)."; }
+                else if (week === 2) { sets = 4; reps = 4; labelInfo = "Sem 2: Disminución de reps para acercamiento a RM / Homeostasis."; }
+                else if (week === 3) { sets = 3; reps = 6; labelInfo = "Sem 3 (Descarga): Menos series/peso para síntesis proteica (Fib. IIb)."; }
+                else if (week === 4) { sets = 4; reps = 6; labelInfo = "Sem 4: Superación de carga (Debe levantar más que en Sem 1)."; }
             } 
             else if (method === 'ondulada') {
-                // Método 3: Por carga ondulada (Intrasemanal)
-                if (week === 1) { sets = 4; reps = 8; labelInfo = "Sem 1 (Día 1): Volumen alto (8 reps)."; }
-                else if (week === 2) { sets = 4; reps = 6; labelInfo = "Sem 2 (Día 1): Aumento de intensidad (6 reps)."; }
-                else if (week === 3) { sets = 3; reps = 5; labelInfo = "Sem 3 (Descarga): Volumen reducido."; }
-                else if (week === 4) { sets = 4; reps = 4; labelInfo = "Sem 4 (Pico): Búsqueda de alta intensidad / 2RM."; }
+                if (week === 1) { sets = 4; reps = 8; labelInfo = "Sem 1 (Día 1): Volumen alto de adaptación."; }
+                else if (week === 2) { sets = 4; reps = 6; labelInfo = "Sem 2 (Día 1): Incremento de intensidad."; }
+                else if (week === 3) { sets = 3; reps = 5; labelInfo = "Sem 3 (Descarga): Reducción de estímulo intrasemanal."; }
+                else if (week === 4) { sets = 4; reps = 4; labelInfo = "Sem 4 (Pico): Búsqueda cercana a 2RM."; }
             }
             else {
-                // Método 1: Variación de contenidos (Novatos) u otro estándar
-                labelInfo = `Mesociclo de Adaptación (Var. Contenidos)`;
+                labelInfo = `Mes 1-2 (Variación de Contenidos): Variar ejercicios complejos cada 3-4 semanas para evitar estancamiento.`;
             }
 
             return { sets, reps, labelInfo };
         };
 
-        // --- COMPONENTE: EDICIÓN DE EJERCICIO (PROFESOR) ---
+        // --- COMPONENTE: EDICIÓN DE DÍA (PROFESOR) ---
+        function DayEditor({ day, onUpdateDayName, exercises, onUpdateExercise, onDeleteExercise, onAddExercise }) {
+            const [dayName, setDayName] = useState(day.name);
+
+            useEffect(() => {
+                setDayName(day.name);
+            }, [day.name]);
+
+            return (
+                <div className="p-4">
+                    <input 
+                        className="font-black text-3xl lowercase bg-transparent outline-none text-white w-full mb-6 border-b border-transparent focus:border-brand-500 transition-colors placeholder-gray-600" 
+                        value={dayName} 
+                        placeholder="Nombre del día..." 
+                        onChange={(e) => setDayName(e.target.value)}
+                        onBlur={() => onUpdateDayName(dayName)}
+                    />
+                    {exercises.map(ex => (
+                        <ExerciseRow key={ex.id} exercise={ex} onUpdate={onUpdateExercise} onDelete={onDeleteExercise} />
+                    ))}
+                    <button onClick={onAddExercise} className="w-full bg-brand-500 text-black font-bold py-4 rounded-xl mt-4 hover:bg-brand-600 transition-colors shadow-lg shadow-brand-500/20">
+                        <i className="fa-solid fa-plus mr-2"></i> Agregar ejercicio
+                    </button>
+                </div>
+            );
+        }
+
+        // --- COMPONENTE: EDICIÓN DE EJERCICIO (PROFESOR) - Bug de tildes solucionado ---
         function ExerciseRow({ exercise, onUpdate, onDelete }) {
-            const [localEx, setLocalEx] = useState(exercise);
+            const [localName, setLocalName] = useState(exercise.name || '');
+            const [localSets, setLocalSets] = useState(exercise.sets || '4');
+            const [localReps, setLocalReps] = useState(exercise.reps || '10');
+            const [localRir, setLocalRir] = useState(exercise.rir || '2');
+            const [localRest, setLocalRest] = useState(exercise.rest || '90s');
+            const [localUni, setLocalUni] = useState(exercise.isUnilateral || false);
             const [showSuggestions, setShowSuggestions] = useState(false);
 
-            const handleChange = (field, value) => {
-                setLocalEx(prev => ({ ...prev, [field]: value }));
-                if(field === 'name') setShowSuggestions(true);
+            useEffect(() => {
+                setLocalName(exercise.name || '');
+                setLocalSets(exercise.sets || '4');
+                setLocalReps(exercise.reps || '10');
+                setLocalRir(exercise.rir || '2');
+                setLocalRest(exercise.rest || '90s');
+                setLocalUni(exercise.isUnilateral || false);
+            }, [exercise]);
+
+            const triggerUpdate = (updatedFields) => {
+                onUpdate({
+                    id: exercise.id,
+                    name: localName,
+                    sets: localSets,
+                    reps: localReps,
+                    rir: localRir,
+                    rest: localRest,
+                    isUnilateral: localUni,
+                    ...updatedFields
+                });
             };
-            
-            const handleBlur = () => {
+
+            const handleNameChange = (val) => {
+                setLocalName(val);
+                setShowSuggestions(true);
+            };
+
+            const handleNameBlur = () => {
                 setTimeout(() => {
                     setShowSuggestions(false);
-                    const finalEx = { ...localEx };
-                    if (!finalEx.rest) finalEx.rest = '90s';
-                    setLocalEx(finalEx);
-                    onUpdate(finalEx);
-                }, 200); 
+                    triggerUpdate({ name: localName });
+                }, 200);
             };
 
             const selectSuggestion = (name) => {
-                const updated = { ...localEx, name };
-                setLocalEx(updated);
+                setLocalName(name);
                 setShowSuggestions(false);
-                onUpdate(updated);
+                triggerUpdate({ name });
             };
 
             const suggestions = EXERCISE_DB.filter(ex => 
-                ex.toLowerCase().includes((localEx.name || '').toLowerCase()) && 
-                localEx.name !== ex
+                ex.toLowerCase().includes(localName.toLowerCase()) && 
+                localName !== ex
             ).slice(0, 5);
 
             return (
@@ -171,13 +217,13 @@
                         <div className="w-5/6 relative">
                             <input 
                                 className="bg-transparent font-bold text-lg outline-none w-full text-white placeholder-gray-500" 
-                                value={localEx.name} 
-                                onChange={(e) => handleChange('name', e.target.value)} 
-                                onBlur={handleBlur} 
+                                value={localName} 
+                                onChange={(e) => handleNameChange(e.target.value)} 
+                                onBlur={handleNameBlur} 
                                 onFocus={() => setShowSuggestions(true)}
                                 placeholder="Nombre del ejercicio" 
                             />
-                            {showSuggestions && localEx.name && suggestions.length > 0 && (
+                            {showSuggestions && localName && suggestions.length > 0 && (
                                 <div className="absolute z-50 top-full left-0 w-full mt-1 bg-dark-800 border border-dark-600 rounded-lg shadow-xl overflow-hidden">
                                     {suggestions.map((sug, idx) => (
                                         <div 
@@ -191,44 +237,51 @@
                                 </div>
                             )}
                         </div>
-                        <button onClick={onDelete} className="text-gray-500 hover:text-red-500 transition-colors px-2 py-1"><i className="fa-solid fa-trash-can"></i></button>
+                        <button onClick={() => onDelete(exercise.id)} className="text-gray-500 hover:text-red-500 transition-colors px-2 py-1"><i className="fa-solid fa-trash-can"></i></button>
                     </div>
                     <div className="flex gap-4 text-sm text-gray-400 items-center overflow-x-auto hide-scrollbar pb-1">
                         <div className="flex items-center gap-1">
-                            <input className="w-8 bg-dark-600 rounded p-1 text-center text-white outline-none focus:border focus:border-brand-500" value={localEx.sets} onChange={(e) => handleChange('sets', e.target.value)} onBlur={handleBlur} /> s (Base)
+                            <input className="w-8 bg-dark-600 rounded p-1 text-center text-white outline-none focus:border focus:border-brand-500" value={localSets} onChange={(e) => setLocalSets(e.target.value)} onBlur={() => triggerUpdate({ sets: localSets })} /> s
                         </div>
                         <div className="flex items-center gap-1">
-                            <input className="w-12 bg-dark-600 rounded p-1 text-center text-white outline-none focus:border focus:border-brand-500" value={localEx.reps} onChange={(e) => handleChange('reps', e.target.value)} onBlur={handleBlur} /> r (Base)
+                            <input className="w-12 bg-dark-600 rounded p-1 text-center text-white outline-none focus:border focus:border-brand-500" value={localReps} onChange={(e) => setLocalReps(e.target.value)} onBlur={() => triggerUpdate({ reps: localReps })} /> r
                         </div>
                         <div className="text-xs flex items-center gap-1">
-                            RIR <input className="w-8 bg-dark-600 rounded p-1 text-center text-white outline-none focus:border focus:border-brand-500" value={localEx.rir} onChange={(e) => handleChange('rir', e.target.value)} onBlur={handleBlur} />
+                            RIR <input className="w-8 bg-dark-600 rounded p-1 text-center text-white outline-none focus:border focus:border-brand-500" value={localRir} onChange={(e) => setLocalRir(e.target.value)} onBlur={() => triggerUpdate({ rir: localRir })} />
                         </div>
                         <div className="flex items-center gap-1">
                             <i className="fa-regular fa-clock"></i> 
                             <input 
                                 className="w-12 bg-dark-600 rounded p-1 text-center text-white outline-none focus:border focus:border-brand-500" 
-                                value={localEx.rest !== undefined ? localEx.rest : '90s'} 
-                                onChange={(e) => handleChange('rest', e.target.value)} 
-                                onBlur={handleBlur} 
+                                value={localRest} 
+                                onChange={(e) => setLocalRest(e.target.value)} 
+                                onBlur={() => triggerUpdate({ rest: localRest || '90s' })} 
                                 placeholder="90s" 
                             />
                         </div>
                     </div>
                     <div className="mt-4 pt-3 border-t border-dark-600 flex items-center gap-2">
-                        <input type="checkbox" id={`uni-${localEx.id}`} checked={localEx.isUnilateral || false} onChange={(e) => {handleChange('isUnilateral', e.target.checked); handleBlur();}} className="w-4 h-4 accent-brand-500 rounded cursor-pointer" />
-                        <label htmlFor={`uni-${localEx.id}`} className="text-xs text-gray-400 cursor-pointer select-none">Ejercicio Unilateral (Separar Izq/Der)</label>
+                        <input 
+                            type="checkbox" 
+                            id={`uni-${exercise.id}`} 
+                            checked={localUni} 
+                            onChange={(e) => {
+                                const val = e.target.checked;
+                                setLocalUni(val);
+                                triggerUpdate({ isUnilateral: val });
+                            }} 
+                            className="w-4 h-4 accent-brand-500 rounded cursor-pointer" 
+                        />
+                        <label htmlFor={`uni-${exercise.id}`} className="text-xs text-gray-400 cursor-pointer select-none">Ejercicio Unilateral (Separar Izq/Der)</label>
                     </div>
                 </div>
             );
         }
 
         // --- COMPONENTE: EJECUCIÓN DE EJERCICIO (ALUMNO) ---
-        function ClientExerciseRow({ exercise, clientMethod, activeWeek, progressData, previousWeekData, allWeeksData, onSaveProgress, onStartRest, showToast }) {
-            
-            // Calculamos series y repes automáticas según el método y la semana elegida
+        function ClientExerciseRow({ exercise, clientMethod, activeWeek, progressData, previousWeekData, week1Data, allWeeksData, onSaveProgress, onStartRest }) {
             const prescription = getPrescription(clientMethod, activeWeek, exercise.sets, exercise.reps);
             const targetSets = prescription.sets;
-
             const isUni = exercise.isUnilateral === true;
             const totalRows = isUni ? targetSets * 2 : targetSets;
 
@@ -288,6 +341,15 @@
                 updateSet(index, 'type', next);
             };
 
+            let weightStatus = null;
+            if (activeWeek === 4 && week1Data && week1Data.length > 0) {
+                const maxWeek1 = Math.max(...week1Data.map(s => parseFloat(s.weight) || 0));
+                const maxWeek4 = Math.max(...localSets.map(s => parseFloat(s.weight) || 0));
+                if (maxWeek4 > 0 && maxWeek1 > 0) {
+                    weightStatus = maxWeek4 > maxWeek1 ? 'success' : 'warning';
+                }
+            }
+
             return (
                 <div className="mb-10">
                     <div className="flex items-center gap-4 mb-2">
@@ -296,13 +358,24 @@
                         </div>
                         <div className="flex-1">
                             <h4 className="font-bold text-lg text-white leading-tight">{exercise.name}</h4>
-                            <p className="text-xs text-brand-500 font-semibold mt-0.5">
-                                Planificado: <span className="text-white">{prescription.sets} series x {prescription.reps} reps</span>
-                            </p>
+                            <div className="flex items-center gap-2 mt-0.5">
+                                <p className="text-xs text-brand-500 font-semibold">
+                                    Planificado: <span className="text-white">{prescription.sets} series x {prescription.reps} reps</span>
+                                </p>
+                                {weightStatus === 'success' && (
+                                    <span className="bg-green-500/20 text-green-400 text-[10px] px-2 py-0.5 rounded-full font-bold border border-green-500/30">
+                                        <i className="fa-solid fa-arrow-up mr-1"></i> Superó Sem 1 💪
+                                    </span>
+                                )}
+                                {weightStatus === 'warning' && (
+                                    <span className="bg-yellow-500/20 text-yellow-400 text-[10px] px-2 py-0.5 rounded-full font-bold border border-yellow-500/30">
+                                        <i className="fa-solid fa-triangle-exclamation mr-1"></i> Carga igual/menor a Sem 1
+                                    </span>
+                                )}
+                            </div>
                         </div>
                     </div>
 
-                    {/* Nota metodológica para el alumno */}
                     <div className="mb-4 bg-dark-800/80 border border-dark-600 px-3 py-1.5 rounded-lg text-[11px] text-gray-400 italic">
                         <i className="fa-solid fa-circle-info text-brand-500 mr-1"></i> {prescription.labelInfo}
                     </div>
@@ -505,7 +578,6 @@
                 setPinInput('');
             };
 
-            // PROFESOR
             const addClient = () => {
                 if (!newClientName.trim()) return;
                 const newData = JSON.parse(JSON.stringify(globalData));
@@ -566,6 +638,15 @@
                 showToast('Plantilla duplicada con éxito');
             };
 
+            const updateDayName = (clientId, dayId, newName) => {
+                const newData = JSON.parse(JSON.stringify(globalData));
+                const day = newData.routines[clientId].find(d => d.id === dayId);
+                if(day) {
+                    day.name = newName;
+                    saveData(newData);
+                }
+            };
+
             const addExercise = (clientId, dayId) => {
                 const newData = JSON.parse(JSON.stringify(globalData));
                 const day = newData.routines[clientId].find(d => d.id === dayId);
@@ -588,7 +669,6 @@
                 saveData(newData);
             };
 
-            // ALUMNO
             const saveClientProgress = (exerciseId, setsArray, noteString, week) => {
                 const newData = JSON.parse(JSON.stringify(globalData));
                 if (!newData.progress[currentUser.id]) newData.progress[currentUser.id] = {};
@@ -639,19 +719,14 @@
                                             <h2 className="font-bold text-lg text-white">Editar Plantilla</h2>
                                             <div className="w-10"></div>
                                         </header>
-                                        <div className="p-4">
-                                            <input className="font-black text-3xl lowercase bg-transparent outline-none text-white w-full mb-6 border-b border-transparent focus:border-brand-500 transition-colors placeholder-gray-600" value={globalData.routines[activeClient.id].find(d => d.id === activeDayId).name} placeholder="Nombre del día..." onChange={(e) => {
-                                                const newData = JSON.parse(JSON.stringify(globalData));
-                                                newData.routines[activeClient.id].find(d => d.id === activeDayId).name = e.target.value;
-                                                saveData(newData);
-                                            }}/>
-                                            {globalData.routines[activeClient.id].find(d => d.id === activeDayId).exercises.map(ex => (
-                                                <ExerciseRow key={ex.id} exercise={ex} onUpdate={(u) => updateExercise(activeClient.id, activeDayId, u)} onDelete={() => deleteExercise(activeClient.id, activeDayId, ex.id)} />
-                                            ))}
-                                            <button onClick={() => addExercise(activeClient.id, activeDayId)} className="w-full bg-brand-500 text-black font-bold py-4 rounded-xl mt-4 hover:bg-brand-600 transition-colors shadow-lg shadow-brand-500/20">
-                                                <i className="fa-solid fa-plus mr-2"></i> Agregar ejercicio
-                                            </button>
-                                        </div>
+                                        <DayEditor 
+                                            day={globalData.routines[activeClient.id].find(d => d.id === activeDayId)}
+                                            exercises={globalData.routines[activeClient.id].find(d => d.id === activeDayId).exercises}
+                                            onUpdateDayName={(name) => updateDayName(activeClient.id, activeDayId, name)}
+                                            onUpdateExercise={(u) => updateExercise(activeClient.id, activeDayId, u)}
+                                            onDeleteExercise={(exId) => deleteExercise(activeClient.id, activeDayId, exId)}
+                                            onAddExercise={() => addExercise(activeClient.id, activeDayId)}
+                                        />
                                     </>
                                 ) : (
                                     <>
@@ -662,7 +737,6 @@
                                         </header>
                                         
                                         <div className="p-4">
-                                            {/* Selector Oficial de Métodos de Dosificación */}
                                             <div className="mb-8 bg-dark-700 p-4 rounded-2xl border border-dark-600 shadow-inner">
                                                 <h3 className="font-bold text-xs text-gray-400 mb-2 uppercase tracking-widest flex items-center gap-2">
                                                     <i className="fa-solid fa-graduation-cap text-brand-500"></i> Método de Dosificación de Carga
@@ -747,6 +821,17 @@
                             </header>
 
                             <div className="p-5">
+                                {/* Cartel de Saludo Personalizado */}
+                                <div className="mb-6 bg-dark-700 border border-dark-600 p-4 rounded-2xl flex items-center gap-4 shadow-md">
+                                    <div className="w-12 h-12 rounded-full bg-brand-500 text-black flex items-center justify-center font-black text-xl">
+                                        {currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : 'A'}
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Bienvenido</p>
+                                        <h3 className="font-extrabold text-xl text-white capitalize">{currentUser?.name}</h3>
+                                    </div>
+                                </div>
+
                                 <h3 className="font-bold text-xl mb-4 text-white">Mesociclo actual</h3>
                                 <div className="flex bg-dark-700 rounded-full p-1.5 mb-8 border border-dark-600">
                                     {[1, 2, 3, 4].map(num => (
@@ -837,10 +922,10 @@
                                             activeWeek={activeWeek}
                                             progressData={globalData.progress?.[currentUser.id]?.[activeWeek]?.[ex.id]} 
                                             previousWeekData={globalData.progress?.[currentUser.id]?.[activeWeek > 1 ? activeWeek - 1 : 1]?.[ex.id]}
+                                            week1Data={globalData.progress?.[currentUser.id]?.[1]?.[ex.id]?.sets}
                                             allWeeksData={globalData.progress?.[currentUser.id]}
                                             onSaveProgress={(setsArray, noteString) => saveClientProgress(ex.id, setsArray, noteString, activeWeek)} 
                                             onStartRest={startRest}
-                                            showToast={showToast}
                                         />
                                     ))}
                                 </div>
