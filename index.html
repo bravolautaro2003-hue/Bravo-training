@@ -3,12 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Bravo Training</title>
-    <!-- Tailwind CSS -->
+    <title>Bravo Training Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
     <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.22.13/babel.min.js" crossorigin="anonymous"></script>
@@ -19,34 +16,23 @@
             theme: {
                 extend: {
                     colors: {
-                        brand: { 500: '#ef4444', 600: '#dc2626' },
-                        dark: { 900: '#0a0a0a', 800: '#171717', 700: '#262626' }
+                        brand: { 500: '#ffffff', 600: '#e5e5e5' }, // Blanco Pro
+                        dark: { 900: '#000000', 800: '#111111', 700: '#1c1c1e', 600: '#2c2c2e' } // Grises estilo Apple
                     }
                 }
             }
         }
     </script>
     <style>
-        body { -webkit-tap-highlight-color: transparent; background-color: #0a0a0a; color: #fff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-        .app-container { max-width: 480px; margin: 0 auto; min-height: 100vh; background-color: #0a0a0a; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+        body { -webkit-tap-highlight-color: transparent; background-color: #000; color: #fff; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        .app-container { max-width: 480px; margin: 0 auto; min-height: 100vh; background-color: #000; }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
     </style>
 </head>
 <body class="antialiased">
-    <div id="root">
-        <div style="padding: 30px; text-align: center; margin-top: 30%;">
-            <i class="fa-solid fa-dumbbell" style="font-size: 3rem; color: #ef4444; margin-bottom: 20px;"></i>
-            <h2 style="font-size: 1.5rem; font-weight: bold;">Cargando plataforma...</h2>
-        </div>
-    </div>
-
-    <script>
-        window.addEventListener('error', function(e) {
-            const root = document.getElementById('root');
-            if(root) root.innerHTML = '<div style="background:#7f1d1d; color:white; padding:20px; margin:20px; border-radius:10px;"><b>Fallo de conexión:</b><br>' + (e.message || 'Script bloqueado') + '</div>';
-        }, true);
-    </script>
+    <div id="root"></div>
 
     <script type="text/babel">
         const { useState, useEffect } = React;
@@ -61,23 +47,26 @@
             const handleBlur = () => onUpdate(localEx);
 
             return (
-                <div className="bg-dark-800 p-4 rounded-2xl border border-dark-700 mb-4 shadow-sm">
-                    <div className="flex justify-between items-start mb-3">
-                        <input className="bg-transparent font-bold text-lg outline-none w-2/3 text-white placeholder-gray-500" value={localEx.name} onChange={(e) => handleChange('name', e.target.value)} onBlur={handleBlur} placeholder="Nombre del ejercicio" />
-                        <button onClick={onDelete} className="bg-dark-700 text-brand-500 p-2 rounded-lg text-sm"><i className="fa-solid fa-xmark"></i></button>
+                <div className="bg-dark-700 p-4 rounded-xl mb-4">
+                    <div className="flex justify-between items-start mb-2">
+                        <input className="bg-transparent font-bold text-lg outline-none w-5/6 text-white" value={localEx.name} onChange={(e) => handleChange('name', e.target.value)} onBlur={handleBlur} placeholder="Nombre del ejercicio" />
+                        <button onClick={onDelete} className="text-gray-500 hover:text-red-500"><i className="fa-solid fa-ellipsis-vertical"></i></button>
                     </div>
-                    <div className="flex gap-2 text-sm text-gray-400 items-center overflow-x-auto hide-scrollbar pb-1">
-                        <input className="w-10 bg-transparent outline-none border-b border-dark-700 text-center text-white focus:border-brand-500" value={localEx.sets} onChange={(e) => handleChange('sets', e.target.value)} onBlur={handleBlur} /> series
-                        <input className="w-14 bg-transparent outline-none border-b border-dark-700 text-center text-white ml-2 focus:border-brand-500" value={localEx.reps} onChange={(e) => handleChange('reps', e.target.value)} onBlur={handleBlur} /> reps
-                        <span className="ml-2">RIR</span><input className="w-8 bg-transparent outline-none border-b border-dark-700 text-center text-white focus:border-brand-500" value={localEx.rir} onChange={(e) => handleChange('rir', e.target.value)} onBlur={handleBlur} />
-                        <span className="ml-2"><i className="fa-regular fa-clock"></i></span><input className="w-12 bg-transparent outline-none border-b border-dark-700 text-center text-white focus:border-brand-500" value={localEx.rest || '90s'} onChange={(e) => handleChange('rest', e.target.value)} onBlur={handleBlur} placeholder="90s" />
+                    <div className="flex gap-4 text-sm text-gray-400 items-center">
+                        <div>
+                            <input className="w-8 bg-dark-600 rounded p-1 text-center text-white" value={localEx.sets} onChange={(e) => handleChange('sets', e.target.value)} onBlur={handleBlur} /> s
+                        </div>
+                        <div>
+                            <input className="w-12 bg-dark-600 rounded p-1 text-center text-white" value={localEx.reps} onChange={(e) => handleChange('reps', e.target.value)} onBlur={handleBlur} /> r
+                        </div>
+                        <div className="text-xs">RIR <input className="w-8 bg-dark-600 rounded p-1 text-center text-white" value={localEx.rir} onChange={(e) => handleChange('rir', e.target.value)} onBlur={handleBlur} /></div>
                     </div>
                 </div>
             );
         }
 
         // --- COMPONENTE: EJECUCIÓN DE EJERCICIO (ALUMNO) ---
-        function ClientExerciseRow({ exercise, progressData, onSaveProgress, onStartRest }) {
+        function ClientExerciseRow({ exercise, progressData, previousWeekData, onSaveProgress }) {
             const setsCount = parseInt(exercise.sets) || 1;
             const [localSets, setLocalSets] = useState(() => {
                 const saved = progressData?.sets || [];
@@ -99,43 +88,68 @@
 
             const updateSet = (index, field, value) => {
                 const newSets = [...localSets];
-                const wasDone = newSets[index].done;
                 newSets[index][field] = value;
                 setLocalSets(newSets);
                 onSaveProgress(newSets);
-                
-                if (field === 'done' && value === true && !wasDone) {
-                    onStartRest(exercise.rest || '90s');
-                }
             };
 
             return (
-                <div className="bg-dark-800 p-5 rounded-2xl mb-4 border border-dark-700">
-                    <h4 className="font-bold text-xl text-white mb-2">{exercise.name}</h4>
-                    <p className="text-sm text-gray-400 mb-4 flex flex-wrap gap-3">
-                        <span>Meta <strong className="text-white">{exercise.reps} reps</strong></span>
-                        <span>RIR <strong className="text-white">{exercise.rir}</strong></span>
-                        <span className="text-brand-500"><i className="fa-regular fa-clock"></i> <strong className="text-white">{exercise.rest || '90s'}</strong></span>
-                    </p>
-                    
-                    <div className="grid grid-cols-[auto_1fr_1fr_auto] gap-3 mb-2 text-xs text-gray-500 font-bold uppercase tracking-wider">
-                        <span>Tipo</span><span className="text-center">KG</span><span className="text-center">Reps</span><span></span>
+                <div className="mb-10">
+                    <div className="flex items-center gap-4 mb-4">
+                        <div className="w-12 h-12 bg-dark-700 rounded-lg flex items-center justify-center text-gray-400">
+                            <i className="fa-solid fa-dumbbell"></i>
+                        </div>
+                        <div>
+                            <h4 className="font-bold text-lg text-white leading-tight">{exercise.name}</h4>
+                        </div>
+                    </div>
+
+                    <div className="flex gap-2 mb-6">
+                        <button className="bg-dark-700 text-sm font-bold px-4 py-2 rounded-full flex items-center gap-2"><i className="fa-solid fa-play text-xs"></i> Tutorial</button>
+                        <button className="bg-dark-700 text-sm font-bold px-4 py-2 rounded-full flex items-center gap-2"><i className="fa-solid fa-pencil text-xs"></i> Notas</button>
                     </div>
                     
-                    {localSets.map((set, i) => (
-                        <div key={i} className={`grid grid-cols-[auto_1fr_1fr_auto] gap-3 items-center mb-2 p-2 rounded-lg ${set.done ? 'bg-brand-500/10 border border-brand-500/20' : 'bg-dark-700/50'}`}>
-                            <span className="w-6 h-6 flex items-center justify-center bg-dark-900 rounded font-bold text-xs">{i + 1}</span>
-                            <div className="relative">
-                                <input type="number" className="w-full bg-dark-900 rounded-lg p-2 text-white outline-none text-center" placeholder="-" value={set.weight} onChange={(e) => updateSet(i, 'weight', e.target.value)} />
+                    <div className="grid grid-cols-[auto_1fr_1fr_1fr_auto] gap-2 mb-2 text-[10px] text-gray-500 font-bold uppercase tracking-widest px-2">
+                        <span className="w-8 text-center">Serie</span>
+                        <span className="text-center">Previa</span>
+                        <span className="text-center">KG</span>
+                        <span className="text-center">Repes</span>
+                        <span className="w-10"></span>
+                    </div>
+                    
+                    {localSets.map((set, i) => {
+                        // Buscamos qué hizo la semana pasada en esta misma serie
+                        const prevSet = previousWeekData?.sets?.[i];
+                        const prevText = prevSet?.weight && prevSet?.reps ? `${prevSet.weight} x ${prevSet.reps}` : '-';
+                        const isWarmup = i === 0; // Ejemplo estético: la primera serie como "W" (Warmup)
+
+                        return (
+                            <div key={i} className={`grid grid-cols-[auto_1fr_1fr_1fr_auto] gap-2 items-center mb-2 p-1`}>
+                                <span className={`w-8 h-8 flex items-center justify-center rounded-lg font-bold text-xs ${isWarmup ? 'bg-orange-900/40 text-orange-500' : 'bg-dark-700 text-gray-400'}`}>
+                                    {isWarmup ? 'W' : i + 1}
+                                </span>
+                                
+                                <div className="text-center text-gray-500 text-sm font-medium">
+                                    {prevText}
+                                </div>
+
+                                <div className="relative">
+                                    <input type="number" className="w-full bg-dark-700 rounded-lg py-2.5 text-white outline-none text-center font-bold" placeholder="-" value={set.weight} onChange={(e) => updateSet(i, 'weight', e.target.value)} />
+                                </div>
+                                
+                                <div className="relative">
+                                    <input type="number" className="w-full bg-dark-700 rounded-lg py-2.5 text-white outline-none text-center font-bold" placeholder="-" value={set.reps} onChange={(e) => updateSet(i, 'reps', e.target.value)} />
+                                </div>
+                                
+                                <button onClick={() => updateSet(i, 'done', !set.done)} className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${set.done ? 'bg-green-500 text-white' : 'bg-dark-700 text-gray-500'}`}>
+                                    <i className="fa-solid fa-check"></i>
+                                </button>
                             </div>
-                            <div className="relative">
-                                <input type="number" className="w-full bg-dark-900 rounded-lg p-2 text-white outline-none text-center" placeholder="-" value={set.reps} onChange={(e) => updateSet(i, 'reps', e.target.value)} />
-                            </div>
-                            <button onClick={() => updateSet(i, 'done', !set.done)} className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${set.done ? 'bg-brand-500 text-white shadow-[0_0_10px_rgba(239,68,68,0.5)]' : 'bg-dark-900 border border-dark-600 text-dark-600'}`}>
-                                <i className="fa-solid fa-check"></i>
-                            </button>
-                        </div>
-                    ))}
+                        )
+                    })}
+                    <button className="w-full mt-4 bg-dark-700 text-gray-300 font-bold py-3 rounded-xl text-sm">
+                        + Añadir serie
+                    </button>
                 </div>
             );
         }
@@ -146,15 +160,11 @@
             const [view, setView] = useState('home'); 
             const [currentUser, setCurrentUser] = useState(null);
             const [pinInput, setPinInput] = useState('');
-            const [newClientName, setNewClientName] = useState('');
             const [activeClient, setActiveClient] = useState(null);
             const [activeDayId, setActiveDayId] = useState(null);
             
-            const [clientTab, setClientTab] = useState('rutina'); 
             const [activeWeek, setActiveWeek] = useState(1); 
-            const [trainingTime, setTrainingTime] = useState(0);
-            const [isTraining, setIsTraining] = useState(false);
-            const [restTime, setRestTime] = useState(0); 
+            const [isTrainingStarted, setIsTrainingStarted] = useState(false);
 
             useEffect(() => {
                 fetchData();
@@ -164,46 +174,11 @@
                 return () => { supabase.removeChannel(channel); };
             }, []);
 
-            useEffect(() => {
-                let interval = null;
-                if (view === 'cliente' && isTraining) {
-                    interval = setInterval(() => setTrainingTime(t => t + 1), 1000);
-                } else { clearInterval(interval); }
-                return () => clearInterval(interval);
-            }, [view, isTraining]);
-
-            useEffect(() => {
-                let restInterval = null;
-                if (restTime > 0) {
-                    restInterval = setInterval(() => setRestTime(t => t - 1), 1000);
-                }
-                return () => clearInterval(restInterval);
-            }, [restTime]);
-
-            const startRest = (timeString) => {
-                let t = parseInt(timeString);
-                if (timeString.toLowerCase().includes('m')) t = t * 60;
-                else if (isNaN(t)) t = 90; 
-                setRestTime(t);
-            };
-
-            const formatTime = (secs) => {
-                const m = Math.floor(secs / 60).toString().padStart(2, '0');
-                const s = (secs % 60).toString().padStart(2, '0');
-                return `${m}:${s}`;
-            };
-
-            const handleFinishTraining = () => {
-                setIsTraining(false);
-                alert(`¡Entrenamiento guardado con éxito! 💪\nTiempo total: ${formatTime(trainingTime)}`);
-            };
-
             const fetchData = async () => {
                 try {
-                    const { data, error } = await supabase.from('bravo_state').select('data').eq('id', 'main').single();
-                    if (error) throw error;
+                    const { data } = await supabase.from('bravo_state').select('data').eq('id', 'main').single();
                     if (data) setGlobalData(data.data);
-                } catch (e) { console.error("Error BD:", e.message); }
+                } catch (e) { console.error(e); }
                 setLoading(false);
             };
 
@@ -213,58 +188,30 @@
             };
 
             const handleLogin = () => {
-                if (!globalData) { alert("Base de datos no detectada."); return; }
+                if (!globalData) return;
                 if (pinInput === globalData.profesorPin) { setView('profesor'); } 
                 else {
                     const client = globalData.clients?.find(c => c.pin === pinInput);
                     if (client) { 
                         setCurrentUser(client); 
-                        if(globalData.routines[client.id]?.length > 0) setActiveDayId(globalData.routines[client.id][0].id);
-                        setClientTab('rutina');
-                        setActiveWeek(1);
-                        setTrainingTime(0); 
-                        setIsTraining(true); 
-                        setView('cliente'); 
-                    } else { alert('PIN incorrecto. Revisalo bien.'); }
+                        setView('cliente_listado'); 
+                    } else { alert('PIN incorrecto'); }
                 }
                 setPinInput('');
             };
 
-            // FUNCIONES PROFESOR
-            const addClient = () => {
-                if (!newClientName.trim()) return;
-                const newData = JSON.parse(JSON.stringify(globalData));
-                const newClient = { id: Date.now().toString(), name: newClientName, pin: Math.floor(1000 + Math.random() * 9000).toString() };
-                if(!newData.clients) newData.clients = [];
-                if(!newData.routines) newData.routines = {};
-                if(!newData.progress) newData.progress = {};
-                newData.clients.push(newClient);
-                newData.routines[newClient.id] = [];
-                saveData(newData);
-                setNewClientName('');
-            };
-
+            // PROFESOR
             const addDay = (clientId) => {
                 const newData = JSON.parse(JSON.stringify(globalData));
                 const newId = Date.now().toString();
-                newData.routines[clientId].push({ id: newId, name: "Día " + (newData.routines[clientId].length + 1), exercises: [] });
+                newData.routines[clientId].push({ id: newId, name: "Nueva Plantilla", exercises: [] });
                 saveData(newData);
-                setActiveDayId(newId);
-            };
-
-            const deleteDay = (clientId, dayId) => {
-                const confirmacion = window.confirm('¿Seguro que querés borrar este día entero?');
-                if (!confirmacion) return;
-                const newData = JSON.parse(JSON.stringify(globalData));
-                newData.routines[clientId] = newData.routines[clientId].filter(d => d.id !== dayId);
-                saveData(newData);
-                setActiveDayId(newData.routines[clientId][0]?.id || null);
             };
 
             const addExercise = (clientId, dayId) => {
                 const newData = JSON.parse(JSON.stringify(globalData));
                 const day = newData.routines[clientId].find(d => d.id === dayId);
-                day.exercises.push({ id: Date.now().toString(), name: 'Nuevo Ejercicio', sets: '3', reps: '10-12', rir: '2', rest: '90s' });
+                day.exercises.push({ id: Date.now().toString(), name: 'Nuevo Ejercicio', sets: '4', reps: '10', rir: '2' });
                 saveData(newData);
             };
 
@@ -276,14 +223,7 @@
                 saveData(newData);
             };
 
-            const deleteExercise = (clientId, dayId, exerciseId) => {
-                const newData = JSON.parse(JSON.stringify(globalData));
-                const day = newData.routines[clientId].find(d => d.id === dayId);
-                day.exercises = day.exercises.filter(e => e.id !== exerciseId);
-                saveData(newData);
-            };
-
-            // FUNCIONES ALUMNO
+            // ALUMNO
             const saveClientProgress = (exerciseId, setsArray, week) => {
                 const newData = JSON.parse(JSON.stringify(globalData));
                 if (!newData.progress[currentUser.id]) newData.progress[currentUser.id] = {};
@@ -294,204 +234,212 @@
                 saveData(newData);
             };
 
-            const calculateBadges = () => {
-                if(!currentUser || !globalData.progress?.[currentUser.id]) return { primerPaso: false, club100: false };
-                let maxWeight = 0;
-                let hasDoneSet = false;
-                
-                const userProgressAllWeeks = globalData.progress[currentUser.id];
-                Object.values(userProgressAllWeeks).forEach(weekData => {
-                    Object.values(weekData).forEach(exercise => {
-                        exercise.sets?.forEach(set => {
-                            if (set.done) hasDoneSet = true;
-                            if (set.weight && !isNaN(set.weight)) {
-                                if (parseFloat(set.weight) >= maxWeight) maxWeight = parseFloat(set.weight);
-                            }
-                        });
-                    });
-                });
-                return { primerPaso: hasDoneSet, club100: maxWeight >= 100 };
-            };
+            if (loading) return <div className="app-container flex justify-center items-center h-screen bg-black text-white">Cargando...</div>;
 
-            if (loading) return <div className="app-container flex justify-center items-center"><i className="fa-solid fa-spinner fa-spin text-brand-500 text-4xl"></i></div>;
-
+            // PANTALLA LOGIN
             if (view === 'home') return (
-                <div className="app-container flex flex-col justify-center p-6 space-y-8">
-                    <div className="text-center space-y-2">
-                        <i className="fa-solid fa-dumbbell text-5xl text-brand-500 mb-2"></i>
-                        <h1 className="text-4xl font-black tracking-tighter uppercase">Bravo <span className="text-brand-500">Training</span></h1>
-                    </div>
-                    <div className="bg-dark-800 p-6 rounded-3xl border border-dark-700">
-                        <input type="password" placeholder="PIN" className="w-full bg-dark-900 border border-dark-600 p-4 rounded-xl text-center text-2xl tracking-[0.5em] focus:border-brand-500 outline-none mb-4" value={pinInput} onChange={(e) => setPinInput(e.target.value)} />
-                        <button onClick={handleLogin} className="w-full bg-brand-600 py-4 rounded-xl font-bold text-lg shadow-lg shadow-brand-500/20">Ingresar</button>
+                <div className="app-container flex flex-col justify-center p-6 space-y-8 bg-black h-screen">
+                    <h1 className="text-4xl font-black text-center text-white mb-8">Bravo<br/>Training</h1>
+                    <div className="bg-dark-700 p-6 rounded-3xl">
+                        <input type="password" placeholder="PIN" className="w-full bg-dark-800 p-4 rounded-xl text-center text-2xl tracking-[0.5em] outline-none mb-4 text-white" value={pinInput} onChange={(e) => setPinInput(e.target.value)} />
+                        <button onClick={handleLogin} className="w-full bg-white text-black py-4 rounded-xl font-bold text-lg">Entrar</button>
                     </div>
                 </div>
             );
 
+            // PANTALLA PROFESOR - LISTADO DE ALUMNOS Y PLANTILLAS
             if (view === 'profesor') {
                 if(activeClient) {
                     const clientRoutines = globalData.routines[activeClient.id] || [];
-                    const currentDay = clientRoutines.find(d => d.id === activeDayId) || clientRoutines[0];
+                    
+                    if(activeDayId) {
+                        const currentDay = clientRoutines.find(d => d.id === activeDayId);
+                        return (
+                            <div className="app-container pb-20">
+                                <header className="p-4 flex items-center justify-between sticky top-0 bg-black/90 backdrop-blur z-10 border-b border-dark-700">
+                                    <button onClick={() => setActiveDayId(null)} className="text-white w-10 h-10 flex items-center justify-center"><i className="fa-solid fa-arrow-left"></i></button>
+                                    <h2 className="font-bold text-lg text-white">Editar</h2>
+                                    <div className="w-10"></div>
+                                </header>
+                                <div className="p-4">
+                                    <input className="font-black text-3xl bg-transparent outline-none text-white w-full mb-6" value={currentDay.name} onChange={(e) => {
+                                        const newData = JSON.parse(JSON.stringify(globalData));
+                                        newData.routines[activeClient.id].find(d => d.id === currentDay.id).name = e.target.value;
+                                        saveData(newData);
+                                    }}/>
+                                    {currentDay.exercises.map(ex => (
+                                        <ExerciseRow key={ex.id} exercise={ex} onUpdate={(u) => updateExercise(activeClient.id, currentDay.id, u)} onDelete={() => {}} />
+                                    ))}
+                                    <button onClick={() => addExercise(activeClient.id, currentDay.id)} className="w-full bg-dark-700 text-white font-bold py-4 rounded-xl mt-4">
+                                        + Agregar ejercicio
+                                    </button>
+                                </div>
+                            </div>
+                        );
+                    }
 
                     return (
-                        <div className="app-container flex flex-col pb-20">
-                            <header className="p-4 flex items-center justify-between border-b border-dark-800 bg-dark-900 sticky top-0 z-10">
-                                <button onClick={() => {setActiveClient(null); setActiveDayId(null);}} className="text-gray-400 w-8 h-8 flex items-center justify-center bg-dark-800 rounded-full"><i className="fa-solid fa-arrow-left"></i></button>
-                                <h2 className="font-bold text-xl">{activeClient.name}</h2>
-                                <span className="bg-dark-800 text-xs px-2 py-1 rounded text-gray-400 font-mono">PIN {activeClient.pin}</span>
+                        <div className="app-container pb-20">
+                            <header className="p-4 flex items-center justify-between sticky top-0 bg-black/90 backdrop-blur z-10">
+                                <button onClick={() => setActiveClient(null)} className="text-white w-10 h-10"><i className="fa-solid fa-arrow-left"></i></button>
+                                <h2 className="font-bold text-lg text-white">{activeClient.name}</h2>
+                                <div className="w-10"></div>
                             </header>
-
-                            <div className="p-4 space-y-6">
-                                <div className="flex gap-2 overflow-x-auto hide-scrollbar">
+                            
+                            <div className="p-4">
+                                <h3 className="font-bold text-xl mb-4 text-white">Tus plantillas</h3>
+                                <div className="space-y-4">
                                     {clientRoutines.map(day => (
-                                        <button key={day.id} onClick={() => setActiveDayId(day.id)} className={`whitespace-nowrap px-5 py-2 rounded-full font-bold text-sm ${activeDayId === day.id ? 'bg-brand-500 text-white' : 'bg-dark-800 text-gray-400'}`}>{day.name}</button>
+                                        <div key={day.id} onClick={() => setActiveDayId(day.id)} className="flex items-center gap-4 cursor-pointer">
+                                            <div className="w-16 h-16 bg-white rounded-lg shrink-0 flex items-center justify-center text-black">
+                                                <i className="fa-solid fa-file-lines text-2xl"></i>
+                                            </div>
+                                            <div className="flex-1 overflow-hidden">
+                                                <h4 className="font-bold text-lg text-white truncate">{day.name}</h4>
+                                                <p className="text-sm text-gray-500 truncate">{day.exercises.map(e => e.name).join(', ') || 'Sin ejercicios'}</p>
+                                            </div>
+                                            <button className="text-gray-500 px-2"><i className="fa-solid fa-ellipsis-vertical"></i></button>
+                                        </div>
                                     ))}
-                                    <button onClick={() => addDay(activeClient.id)} className="whitespace-nowrap bg-dark-800 text-gray-400 px-4 py-2 rounded-full font-bold text-sm border border-dark-700">+ Día</button>
                                 </div>
 
-                                {currentDay && (
-                                    <div className="bg-dark-900 border border-dark-800 rounded-3xl p-4">
-                                        <div className="flex justify-between items-center mb-6 border-b border-dark-700 pb-2">
-                                            <input className="font-bold text-xl bg-transparent outline-none text-white w-2/3" value={currentDay.name} onChange={(e) => {
-                                                const newData = JSON.parse(JSON.stringify(globalData));
-                                                newData.routines[activeClient.id].find(d => d.id === currentDay.id).name = e.target.value;
-                                                saveData(newData);
-                                            }}/>
-                                            <button onClick={() => deleteDay(activeClient.id, currentDay.id)} className="text-brand-500 text-sm font-bold bg-brand-500/10 px-3 py-1 rounded-lg">Borrar Día</button>
-                                        </div>
-
-                                        {currentDay.exercises.map(ex => (
-                                            <ExerciseRow key={ex.id} exercise={ex} onUpdate={(u) => updateExercise(activeClient.id, currentDay.id, u)} onDelete={() => deleteExercise(activeClient.id, currentDay.id, ex.id)} />
-                                        ))}
-
-                                        <button onClick={() => addExercise(activeClient.id, currentDay.id)} className="w-full bg-dark-800 py-4 rounded-xl font-bold text-sm mt-2 border border-dark-700 text-gray-300 hover:text-white"><i className="fa-solid fa-plus mr-2"></i> Agregar ejercicio</button>
-                                    </div>
-                                )}
+                                <button onClick={() => addDay(activeClient.id)} className="mt-8 flex items-center gap-4 text-white font-bold w-full bg-dark-700 p-4 rounded-xl">
+                                    <i className="fa-regular fa-folder text-xl"></i> Crear nueva plantilla
+                                </button>
                             </div>
                         </div>
                     );
                 }
 
                 return (
-                    <div className="app-container flex flex-col">
-                        <header className="p-5 flex justify-between items-center border-b border-dark-800 bg-dark-900 sticky top-0">
-                            <h2 className="font-bold text-xl text-brand-500"><i className="fa-solid fa-user-gear"></i> Panel de Control</h2>
-                            <button onClick={() => setView('home')} className="text-gray-400 w-8 h-8 bg-dark-800 rounded-full flex items-center justify-center"><i className="fa-solid fa-arrow-right-from-bracket"></i></button>
+                    <div className="app-container pb-20">
+                        <header className="p-4 flex justify-between items-center bg-black sticky top-0 border-b border-dark-700">
+                            <h2 className="font-black text-2xl text-white">Alumnos</h2>
+                            <button onClick={() => setView('home')} className="text-gray-400"><i className="fa-solid fa-arrow-right-from-bracket"></i></button>
                         </header>
-                        <div className="p-5 space-y-6">
-                            <div className="flex gap-2 bg-dark-800 p-2 rounded-2xl border border-dark-700 shadow-inner">
-                                <input className="flex-1 bg-transparent px-4 outline-none text-sm text-white" placeholder="Nombre del alumno..." value={newClientName} onChange={(e) => setNewClientName(e.target.value)} />
-                                <button onClick={addClient} className="bg-brand-600 rounded-xl w-10 h-10 flex items-center justify-center text-white"><i className="fa-solid fa-plus"></i></button>
-                            </div>
-                            
-                            <div className="space-y-3">
-                                {globalData.clients?.map(client => (
-                                    <div key={client.id} onClick={() => { setActiveClient(client); if(globalData.routines[client.id]?.[0]) setActiveDayId(globalData.routines[client.id][0].id); }} className="bg-dark-800 p-4 rounded-2xl flex justify-between items-center cursor-pointer border border-dark-700 hover:border-brand-500 transition-colors">
-                                        <div>
-                                            <p className="font-bold text-lg text-white">{client.name}</p>
-                                            <p className="text-xs text-brand-500 mt-1">PIN: {client.pin}</p>
-                                        </div>
-                                        <i className="fa-solid fa-chevron-right text-gray-600"></i>
-                                    </div>
-                                ))}
-                            </div>
+                        <div className="p-4 space-y-2">
+                            {globalData.clients?.map(client => (
+                                <div key={client.id} onClick={() => setActiveClient(client)} className="bg-dark-700 p-4 rounded-xl flex justify-between items-center cursor-pointer">
+                                    <p className="font-bold text-lg text-white">{client.name}</p>
+                                    <i className="fa-solid fa-chevron-right text-gray-500"></i>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 );
             }
 
-            if (view === 'cliente') {
+            // PANTALLA ALUMNO - LISTADO DE PLANTILLAS
+            if (view === 'cliente_listado') {
                 const clientRoutines = globalData.routines[currentUser.id] || [];
-                const currentDay = clientRoutines.find(d => d.id === activeDayId) || clientRoutines[0];
-                const badges = calculateBadges(); 
 
                 return (
-                    <div className="app-container flex flex-col pb-20 relative">
-                        <header className="p-5 flex justify-between items-center bg-dark-900 sticky top-0 z-10 border-b border-dark-800">
-                            <div>
-                                <h1 className="text-2xl font-bold">Hola, <span className="text-white">{currentUser.name}</span></h1>
-                                <p className="text-gray-400 text-sm">Tu espacio personal</p>
-                            </div>
-                            <button onClick={() => setView('home')} className="bg-dark-800 text-gray-300 px-4 py-2 rounded-xl text-sm border border-dark-700">Salir</button>
+                    <div className="app-container pb-20">
+                        <header className="p-5 flex justify-between items-center sticky top-0 bg-black/90 backdrop-blur z-10">
+                            <h1 className="text-2xl font-bold text-white">Bravo Training</h1>
+                            <button onClick={() => setView('home')} className="text-gray-400 bg-dark-700 px-3 py-1 rounded-full text-xs font-bold">Salir</button>
                         </header>
 
-                        <div className="p-5 space-y-6">
-                            <div className="flex gap-2">
-                                <button onClick={() => setClientTab('rutina')} className={`px-5 py-2 rounded-full font-bold text-sm transition-colors ${clientTab === 'rutina' ? 'bg-brand-500 text-white shadow-md shadow-brand-500/20' : 'bg-dark-800 text-gray-400 border border-dark-700'}`}>Rutina</button>
-                                <button onClick={() => setClientTab('progreso')} className={`px-5 py-2 rounded-full font-bold text-sm transition-colors ${clientTab === 'progreso' ? 'bg-brand-500 text-white shadow-md shadow-brand-500/20' : 'bg-dark-800 text-gray-400 border border-dark-700'}`}>Progreso</button>
+                        <div className="p-5">
+                            {/* Selector de Mesociclo estilo Píldora */}
+                            <div className="flex bg-dark-700 rounded-full p-1 mb-8">
+                                {[1, 2, 3, 4].map(num => (
+                                    <button key={num} onClick={() => setActiveWeek(num)} className={`flex-1 py-1.5 text-sm font-bold rounded-full transition-all ${activeWeek === num ? 'bg-white text-black' : 'text-gray-400'}`}>Sem. {num}</button>
+                                ))}
                             </div>
 
-                            {clientTab === 'rutina' && (
-                                <div>
-                                    <div className="flex justify-between items-center mb-6">
-                                        <span className="bg-dark-800 text-gray-300 px-4 py-2 rounded-full text-sm flex items-center gap-2 border border-dark-700"><i className="fa-solid fa-stopwatch text-brand-500"></i> {formatTime(trainingTime)}</span>
-                                        <button onClick={handleFinishTraining} className="bg-brand-500 text-white px-6 py-2 rounded-full font-bold text-sm shadow-lg shadow-brand-500/20">Terminar</button>
-                                    </div>
-
-                                    <h4 className="text-gray-500 text-xs font-bold uppercase mb-2">Mesociclo (Semanas)</h4>
-                                    <div className="flex gap-2 overflow-x-auto hide-scrollbar mb-6">
-                                        {[1, 2, 3, 4].map(num => (
-                                            <button key={num} onClick={() => setActiveWeek(num)} className={`whitespace-nowrap px-4 py-1 rounded-full text-xs font-bold border ${activeWeek === num ? 'bg-brand-500 text-white border-brand-500' : 'bg-dark-900 text-gray-600 border-dark-800'}`}>Sem. {num}</button>
-                                        ))}
-                                    </div>
-
-                                    {clientRoutines.length > 0 && (
-                                        <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-2 mb-4">
-                                            {clientRoutines.map(day => (
-                                                <button key={day.id} onClick={() => setActiveDayId(day.id)} className={`whitespace-nowrap px-5 py-2 rounded-full font-bold text-sm transition-colors ${activeDayId === day.id ? 'bg-dark-700 text-white border border-brand-500' : 'bg-dark-800 text-gray-400 border border-dark-700'}`}>{day.name}</button>
-                                            ))}
+                            <h3 className="font-bold text-xl mb-6 text-white">Tus plantillas</h3>
+                            <div className="space-y-6">
+                                {clientRoutines.map(day => (
+                                    <div key={day.id} onClick={() => {setActiveDayId(day.id); setIsTrainingStarted(false); setView('cliente_entrenamiento');}} className="flex items-center gap-4 cursor-pointer group">
+                                        <div className="w-16 h-16 bg-white rounded-lg shrink-0 flex items-center justify-center text-black shadow-lg">
+                                            <i className="fa-solid fa-dumbbell text-2xl"></i>
                                         </div>
-                                    )}
-
-                                    <div>
-                                        {currentDay?.exercises.map(ex => (
-                                            <ClientExerciseRow 
-                                                key={`${ex.id}-${activeWeek}`} 
-                                                exercise={ex} 
-                                                progressData={globalData.progress?.[currentUser.id]?.[activeWeek]?.[ex.id]} 
-                                                onSaveProgress={(setsArray) => saveClientProgress(ex.id, setsArray, activeWeek)} 
-                                                onStartRest={startRest}
-                                            />
-                                        ))}
+                                        <div className="flex-1 overflow-hidden border-b border-dark-700 pb-4 group-last:border-0">
+                                            <h4 className="font-bold text-lg text-white truncate lowercase">{day.name}</h4>
+                                            <p className="text-sm text-gray-500 truncate">{day.exercises.map(e => e.name).join(', ') || 'Sin ejercicios'}</p>
+                                        </div>
                                     </div>
-                                </div>
-                            )}
+                                ))}
+                            </div>
+                        </div>
+                        
+                        {/* Menú inferior estilo app */}
+                        <div className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-[480px] bg-black border-t border-dark-700 flex justify-around p-4 text-gray-500">
+                            <button className="text-white"><i className="fa-solid fa-dumbbell text-xl"></i></button>
+                            <button><i className="fa-regular fa-star text-xl"></i></button>
+                            <button><i className="fa-regular fa-user text-xl"></i></button>
+                        </div>
+                    </div>
+                );
+            }
 
-                            {clientTab === 'progreso' && (
+            // PANTALLA ALUMNO - ENTRENAMIENTO ACTIVO
+            if (view === 'cliente_entrenamiento') {
+                const clientRoutines = globalData.routines[currentUser.id] || [];
+                const currentDay = clientRoutines.find(d => d.id === activeDayId) || clientRoutines[0];
+                const totalMins = currentDay.exercises.length * 5; // Estimado falso para diseño
+
+                if (!isTrainingStarted) {
+                    // VISTA PREVIA DEL ENTRENAMIENTO
+                    return (
+                        <div className="app-container pb-24">
+                            <header className="p-4 flex items-center justify-between sticky top-0 bg-black z-10">
+                                <button onClick={() => setView('cliente_listado')} className="text-white w-10 h-10"><i className="fa-solid fa-arrow-left"></i></button>
+                                <button className="bg-dark-700 text-white px-4 py-1.5 rounded-full text-sm font-bold flex items-center gap-2"><i className="fa-solid fa-wand-magic-sparkles text-blue-400"></i> Adaptar</button>
+                            </header>
+
+                            <div className="p-4">
+                                <h2 className="font-black text-3xl lowercase text-white">{currentDay.name}</h2>
+                                <p className="text-gray-400 mb-8">{currentDay.exercises.length} Ejercicios, ~{totalMins} min</p>
+
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="font-bold text-lg text-white">{currentDay.exercises.length} Ejercicios</h3>
+                                </div>
+
                                 <div className="space-y-6">
-                                    <div className="bg-dark-800 p-5 rounded-2xl border border-dark-700 shadow-inner">
-                                        <h3 className="text-xl font-bold text-white mb-1"><i className="fa-solid fa-trophy text-brand-500 mr-2"></i> Vitrina de Logros</h3>
-                                        <p className="text-sm text-gray-400 mb-6">Desbloqueá insignias superando tus propios límites.</p>
-                                        
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className={`p-4 rounded-xl border flex flex-col items-center text-center transition-all ${badges.primerPaso ? 'bg-dark-700 border-brand-500 shadow-[0_0_15px_rgba(239,68,68,0.2)]' : 'bg-dark-900 border-dark-700 opacity-50 grayscale'}`}>
-                                                <div className={`w-12 h-12 rounded-full flex items-center justify-center text-2xl mb-2 ${badges.primerPaso ? 'bg-brand-500 text-white' : 'bg-dark-700 text-gray-500'}`}>
-                                                    <i className="fa-solid fa-fire"></i>
-                                                </div>
-                                                <h4 className="font-bold text-sm text-white">Primer Paso</h4>
-                                                <p className="text-xs text-gray-400 mt-1">Completar una serie.</p>
+                                    {currentDay.exercises.map((ex, idx) => (
+                                        <div key={ex.id} className="flex gap-4 items-center">
+                                            <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shrink-0">
+                                                <i className="fa-solid fa-dumbbell text-black"></i>
                                             </div>
-
-                                            <div className={`p-4 rounded-xl border flex flex-col items-center text-center transition-all ${badges.club100 ? 'bg-dark-700 border-brand-500 shadow-[0_0_15px_rgba(239,68,68,0.2)]' : 'bg-dark-900 border-dark-700 opacity-50 grayscale'}`}>
-                                                <div className={`w-12 h-12 rounded-full flex items-center justify-center text-2xl mb-2 ${badges.club100 ? 'bg-brand-500 text-white' : 'bg-dark-700 text-gray-500'}`}>
-                                                    <i className="fa-solid fa-weight-hanging"></i>
-                                                </div>
-                                                <h4 className="font-bold text-sm text-white">Club 100</h4>
-                                                <p className="text-xs text-gray-400 mt-1">Levantar 100kg.</p>
+                                            <div className="flex-1">
+                                                <p className="text-xs text-gray-500 font-bold mb-1">{ex.sets} series x {ex.reps} reps</p>
+                                                <p className="font-bold text-white text-sm leading-tight">{ex.name}</p>
                                             </div>
+                                            <i className="fa-solid fa-right-left text-gray-500"></i>
                                         </div>
-                                    </div>
+                                    ))}
                                 </div>
-                            )}
+                            </div>
 
-                            {restTime > 0 && (
-                                <div className="fixed bottom-10 left-1/2 transform -translate-x-1/2 bg-brand-600 text-white px-6 py-3 rounded-full font-bold text-lg shadow-[0_0_20px_rgba(239,68,68,0.4)] flex items-center gap-3 z-50">
-                                    <i className="fa-solid fa-stopwatch animate-pulse"></i>
-                                    Descanso: {Math.floor(restTime/60)}:{(restTime%60).toString().padStart(2,'0')}
-                                    <button onClick={() => setRestTime(0)} className="ml-2 bg-black/20 rounded-full w-8 h-8 flex items-center justify-center"><i className="fa-solid fa-xmark"></i></button>
-                                </div>
-                            )}
+                            <div className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-[480px] bg-black p-4 border-t border-dark-700">
+                                <button onClick={() => setIsTrainingStarted(true)} className="w-full bg-white text-black font-black text-lg py-4 rounded-2xl flex items-center justify-center gap-2">
+                                    <i className="fa-solid fa-play"></i> Empezar Entrenamiento
+                                </button>
+                            </div>
+                        </div>
+                    );
+                }
 
+                // VISTA: ENTRENAMIENTO EN CURSO (CON TABLAS)
+                return (
+                    <div className="app-container pb-20">
+                        <header className="p-4 flex items-center justify-between sticky top-0 bg-black z-10 border-b border-dark-700">
+                            <button className="text-white font-bold"><i className="fa-solid fa-chevron-down mr-2"></i> 0:05</button>
+                            <button onClick={() => setView('cliente_listado')} className="bg-dark-700 text-white px-4 py-1.5 rounded-lg text-sm font-bold">Terminar</button>
+                        </header>
+
+                        <div className="p-4">
+                            {currentDay?.exercises.map(ex => (
+                                <ClientExerciseRow 
+                                    key={`${ex.id}-${activeWeek}`} 
+                                    exercise={ex} 
+                                    progressData={globalData.progress?.[currentUser.id]?.[activeWeek]?.[ex.id]} 
+                                    previousWeekData={globalData.progress?.[currentUser.id]?.[activeWeek > 1 ? activeWeek - 1 : 1]?.[ex.id]}
+                                    onSaveProgress={(setsArray) => saveClientProgress(ex.id, setsArray, activeWeek)} 
+                                />
+                            ))}
                         </div>
                     </div>
                 );
