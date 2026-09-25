@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Bravo Training</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js" crossorigin="anonymous"></script>
@@ -75,7 +77,7 @@
         }
 
         // --- COMPONENTE: EJECUCIÓN DE EJERCICIO (ALUMNO) ---
-        function ClientExerciseRow({ exercise, progressData, onSaveProgress }) {
+        function ClientExerciseRow({ exercise, progressData, onSaveProgress, onStartRest }) {
             const setsCount = parseInt(exercise.sets) || 1;
             const [localSets, setLocalSets] = useState(() => {
                 const saved = progressData?.sets || [];
@@ -86,11 +88,25 @@
                 }));
             });
 
+            useEffect(() => {
+                const saved = progressData?.sets || [];
+                setLocalSets(Array.from({length: setsCount}, (_, i) => ({
+                    weight: saved[i]?.weight || '', 
+                    reps: saved[i]?.reps || '',
+                    done: saved[i]?.done || false
+                })));
+            }, [progressData, setsCount]);
+
             const updateSet = (index, field, value) => {
                 const newSets = [...localSets];
+                const wasDone = newSets[index].done;
                 newSets[index][field] = value;
                 setLocalSets(newSets);
                 onSaveProgress(newSets);
+                
+                if (field === 'done' && value === true && !wasDone) {
+                    onStartRest(exercise.rest || '90s');
+                }
             };
 
             return (
@@ -120,14 +136,11 @@
                             </button>
                         </div>
                     ))}
-                    <button className="mt-3 text-sm text-gray-400 font-bold flex items-center gap-2 px-2 py-1 rounded hover:bg-dark-700">
-                        <i className="fa-solid fa-plus"></i> Añadir serie
-                    </button>
                 </div>
             );
         }
 
-                function App() {
+        function App() {
             const [globalData, setGlobalData] = useState(null);
             const [loading, setLoading] = useState(true);
             const [view, setView] = useState('home'); 
@@ -141,6 +154,7 @@
             const [activeWeek, setActiveWeek] = useState(1); 
             const [trainingTime, setTrainingTime] = useState(0);
             const [isTraining, setIsTraining] = useState(false);
+            const [restTime, setRestTime] = useState(0); 
 
             useEffect(() => {
                 fetchData();
@@ -154,11 +168,24 @@
                 let interval = null;
                 if (view === 'cliente' && isTraining) {
                     interval = setInterval(() => setTrainingTime(t => t + 1), 1000);
-                } else {
-                    clearInterval(interval);
-                }
+                } else { clearInterval(interval); }
                 return () => clearInterval(interval);
             }, [view, isTraining]);
+
+            useEffect(() => {
+                let restInterval = null;
+                if (restTime > 0) {
+                    restInterval = setInterval(() => setRestTime(t => t - 1), 1000);
+                }
+                return () => clearInterval(restInterval);
+            }, [restTime]);
+
+            const startRest = (timeString) => {
+                let t = parseInt(timeString);
+                if (timeString.toLowerCase().includes('m')) t = t * 60;
+                else if (isNaN(t)) t = 90; 
+                setRestTime(t);
+            };
 
             const formatTime = (secs) => {
                 const m = Math.floor(secs / 60).toString().padStart(2, '0');
@@ -194,6 +221,7 @@
                         setCurrentUser(client); 
                         if(globalData.routines[client.id]?.length > 0) setActiveDayId(globalData.routines[client.id][0].id);
                         setClientTab('rutina');
+                        setActiveWeek(1);
                         setTrainingTime(0); 
                         setIsTraining(true); 
                         setView('cliente'); 
@@ -224,6 +252,15 @@
                 setActiveDayId(newId);
             };
 
+            const deleteDay = (clientId, dayId) => {
+                const confirmacion = window.confirm('¿Seguro que querés borrar este día entero?');
+                if (!confirmacion) return;
+                const newData = JSON.parse(JSON.stringify(globalData));
+                newData.routines[clientId] = newData.routines[clientId].filter(d => d.id !== dayId);
+                saveData(newData);
+                setActiveDayId(newData.routines[clientId][0]?.id || null);
+            };
+
             const addExercise = (clientId, dayId) => {
                 const newData = JSON.parse(JSON.stringify(globalData));
                 const day = newData.routines[clientId].find(d => d.id === dayId);
@@ -247,11 +284,13 @@
             };
 
             // FUNCIONES ALUMNO
-            const saveClientProgress = (exerciseId, setsArray) => {
+            const saveClientProgress = (exerciseId, setsArray, week) => {
                 const newData = JSON.parse(JSON.stringify(globalData));
                 if (!newData.progress[currentUser.id]) newData.progress[currentUser.id] = {};
-                if (!newData.progress[currentUser.id][exerciseId]) newData.progress[currentUser.id][exerciseId] = {};
-                newData.progress[currentUser.id][exerciseId].sets = setsArray;
+                if (!newData.progress[currentUser.id][week]) newData.progress[currentUser.id][week] = {};
+                if (!newData.progress[currentUser.id][week][exerciseId]) newData.progress[currentUser.id][week][exerciseId] = {};
+                
+                newData.progress[currentUser.id][week][exerciseId].sets = setsArray;
                 saveData(newData);
             };
 
@@ -260,13 +299,15 @@
                 let maxWeight = 0;
                 let hasDoneSet = false;
                 
-                const userProgress = globalData.progress[currentUser.id];
-                Object.values(userProgress).forEach(exercise => {
-                    exercise.sets?.forEach(set => {
-                        if (set.done) hasDoneSet = true;
-                        if (set.weight && !isNaN(set.weight)) {
-                            if (parseFloat(set.weight) >= maxWeight) maxWeight = parseFloat(set.weight);
-                        }
+                const userProgressAllWeeks = globalData.progress[currentUser.id];
+                Object.values(userProgressAllWeeks).forEach(weekData => {
+                    Object.values(weekData).forEach(exercise => {
+                        exercise.sets?.forEach(set => {
+                            if (set.done) hasDoneSet = true;
+                            if (set.weight && !isNaN(set.weight)) {
+                                if (parseFloat(set.weight) >= maxWeight) maxWeight = parseFloat(set.weight);
+                            }
+                        });
                     });
                 });
                 return { primerPaso: hasDoneSet, club100: maxWeight >= 100 };
@@ -301,11 +342,6 @@
                             </header>
 
                             <div className="p-4 space-y-6">
-                                <div className="flex gap-2">
-                                    <button className="bg-brand-500 text-white px-5 py-2 rounded-full font-bold text-sm">Rutina</button>
-                                    <button className="bg-dark-800 text-gray-400 px-5 py-2 rounded-full font-bold text-sm">Mesociclos</button>
-                                </div>
-
                                 <div className="flex gap-2 overflow-x-auto hide-scrollbar">
                                     {clientRoutines.map(day => (
                                         <button key={day.id} onClick={() => setActiveDayId(day.id)} className={`whitespace-nowrap px-5 py-2 rounded-full font-bold text-sm ${activeDayId === day.id ? 'bg-brand-500 text-white' : 'bg-dark-800 text-gray-400'}`}>{day.name}</button>
@@ -321,7 +357,7 @@
                                                 newData.routines[activeClient.id].find(d => d.id === currentDay.id).name = e.target.value;
                                                 saveData(newData);
                                             }}/>
-                                            <button className="text-brand-500 text-sm font-bold bg-brand-500/10 px-3 py-1 rounded-lg">Borrar</button>
+                                            <button onClick={() => deleteDay(activeClient.id, currentDay.id)} className="text-brand-500 text-sm font-bold bg-brand-500/10 px-3 py-1 rounded-lg">Borrar Día</button>
                                         </div>
 
                                         {currentDay.exercises.map(ex => (
@@ -370,7 +406,7 @@
                 const badges = calculateBadges(); 
 
                 return (
-                    <div className="app-container flex flex-col pb-20">
+                    <div className="app-container flex flex-col pb-20 relative">
                         <header className="p-5 flex justify-between items-center bg-dark-900 sticky top-0 z-10 border-b border-dark-800">
                             <div>
                                 <h1 className="text-2xl font-bold">Hola, <span className="text-white">{currentUser.name}</span></h1>
@@ -380,7 +416,6 @@
                         </header>
 
                         <div className="p-5 space-y-6">
-                            
                             <div className="flex gap-2">
                                 <button onClick={() => setClientTab('rutina')} className={`px-5 py-2 rounded-full font-bold text-sm transition-colors ${clientTab === 'rutina' ? 'bg-brand-500 text-white shadow-md shadow-brand-500/20' : 'bg-dark-800 text-gray-400 border border-dark-700'}`}>Rutina</button>
                                 <button onClick={() => setClientTab('progreso')} className={`px-5 py-2 rounded-full font-bold text-sm transition-colors ${clientTab === 'progreso' ? 'bg-brand-500 text-white shadow-md shadow-brand-500/20' : 'bg-dark-800 text-gray-400 border border-dark-700'}`}>Progreso</button>
@@ -389,13 +424,14 @@
                             {clientTab === 'rutina' && (
                                 <div>
                                     <div className="flex justify-between items-center mb-6">
-                                        <span className="bg-dark-800 text-gray-300 px-4 py-2 rounded-full text-sm flex items-center gap-2 border border-dark-700"><i className="fa-regular fa-clock text-brand-500"></i> {formatTime(trainingTime)}</span>
+                                        <span className="bg-dark-800 text-gray-300 px-4 py-2 rounded-full text-sm flex items-center gap-2 border border-dark-700"><i className="fa-solid fa-stopwatch text-brand-500"></i> {formatTime(trainingTime)}</span>
                                         <button onClick={handleFinishTraining} className="bg-brand-500 text-white px-6 py-2 rounded-full font-bold text-sm shadow-lg shadow-brand-500/20">Terminar</button>
                                     </div>
 
+                                    <h4 className="text-gray-500 text-xs font-bold uppercase mb-2">Mesociclo (Semanas)</h4>
                                     <div className="flex gap-2 overflow-x-auto hide-scrollbar mb-6">
                                         {[1, 2, 3, 4].map(num => (
-                                            <button key={num} onClick={() => setActiveWeek(num)} className={`whitespace-nowrap px-4 py-1 rounded-full text-xs font-bold border ${activeWeek === num ? 'bg-dark-700 text-white border-gray-500' : 'bg-dark-900 text-gray-600 border-dark-800'}`}>Semana {num}</button>
+                                            <button key={num} onClick={() => setActiveWeek(num)} className={`whitespace-nowrap px-4 py-1 rounded-full text-xs font-bold border ${activeWeek === num ? 'bg-brand-500 text-white border-brand-500' : 'bg-dark-900 text-gray-600 border-dark-800'}`}>Sem. {num}</button>
                                         ))}
                                     </div>
 
@@ -409,7 +445,13 @@
 
                                     <div>
                                         {currentDay?.exercises.map(ex => (
-                                            <ClientExerciseRow key={ex.id} exercise={ex} progressData={globalData.progress?.[currentUser.id]?.[ex.id]} onSaveProgress={(setsArray) => saveClientProgress(ex.id, setsArray)} />
+                                            <ClientExerciseRow 
+                                                key={`${ex.id}-${activeWeek}`} 
+                                                exercise={ex} 
+                                                progressData={globalData.progress?.[currentUser.id]?.[activeWeek]?.[ex.id]} 
+                                                onSaveProgress={(setsArray) => saveClientProgress(ex.id, setsArray, activeWeek)} 
+                                                onStartRest={startRest}
+                                            />
                                         ))}
                                     </div>
                                 </div>
@@ -434,11 +476,19 @@
                                                 <div className={`w-12 h-12 rounded-full flex items-center justify-center text-2xl mb-2 ${badges.club100 ? 'bg-brand-500 text-white' : 'bg-dark-700 text-gray-500'}`}>
                                                     <i className="fa-solid fa-weight-hanging"></i>
                                                 </div>
-                                                <h4 className="font-bold text-sm text-white">Club de los 100</h4>
-                                                <p className="text-xs text-gray-400 mt-1">Levantar 100kg o más.</p>
+                                                <h4 className="font-bold text-sm text-white">Club 100</h4>
+                                                <p className="text-xs text-gray-400 mt-1">Levantar 100kg.</p>
                                             </div>
                                         </div>
                                     </div>
+                                </div>
+                            )}
+
+                            {restTime > 0 && (
+                                <div className="fixed bottom-10 left-1/2 transform -translate-x-1/2 bg-brand-600 text-white px-6 py-3 rounded-full font-bold text-lg shadow-[0_0_20px_rgba(239,68,68,0.4)] flex items-center gap-3 z-50">
+                                    <i className="fa-solid fa-stopwatch animate-pulse"></i>
+                                    Descanso: {Math.floor(restTime/60)}:{(restTime%60).toString().padStart(2,'0')}
+                                    <button onClick={() => setRestTime(0)} className="ml-2 bg-black/20 rounded-full w-8 h-8 flex items-center justify-center"><i className="fa-solid fa-xmark"></i></button>
                                 </div>
                             )}
 
