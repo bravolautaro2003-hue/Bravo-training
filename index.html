@@ -3,12 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <!-- Etiquetas para convertirla en App Nativa (PWA) -->
+    <!-- Meta tags para App Nativa de Apple y Android -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#000000">
     <title>Entrenamiento y Salud</title>
+    
+    <!-- Manifiesto inyectado para obligar al celular a detectar una App Instalable -->
+    <link rel="manifest" href="data:application/manifest+json;charset=utf-8,%7B%22name%22%3A%22Entrenamiento%20y%20Salud%22%2C%22short_name%22%3A%22Training%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23000000%22%2C%22theme_color%22%3A%22%23000000%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22https%3A%2F%2Fcdn-icons-png.flaticon.com%2F512%2F2936%2F2936886.png%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fpng%22%7D%5D%7D">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -50,29 +53,54 @@
     <div id="root"></div>
 
     <script type="text/babel">
+        // Engaño (Dummy Service Worker) para que Chrome nos permita instalar la App
+        if ('serviceWorker' in navigator) {
+            const swCode = "self.addEventListener('fetch', function(e) {});";
+            const blob = new Blob([swCode], {type: 'application/javascript'});
+            navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(()=>{});
+        }
+
         const { useState, useEffect, useRef } = React;
         const SUPABASE_URL = 'https://pncnnvbdquzyvcnuethx.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_5WHz-KSuu5BaV08EGXJJmg_dkVOUJwy';
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // API de Sonido (Beep del cronómetro)
-        const playBeep = () => {
-            try {
+        // --- SISTEMA DE AUDIO (DESBLOQUEO NATIVO) ---
+        let audioCtx = null;
+        
+        const unlockAudio = () => {
+            if (!audioCtx) {
                 const AudioContext = window.AudioContext || window.webkitAudioContext;
-                const audioCtx = new AudioContext();
+                audioCtx = new AudioContext();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        };
+
+        // Escuchamos el primer toque del usuario en la pantalla para desbloquear el sonido
+        document.addEventListener('touchstart', unlockAudio, { once: true });
+        document.addEventListener('click', unlockAudio, { once: true });
+
+        const playAlarm = () => {
+            try {
+                if (!audioCtx) unlockAudio();
                 const oscillator = audioCtx.createOscillator();
                 const gainNode = audioCtx.createGain();
                 
+                // Configuración de un beep doble llamativo
                 oscillator.type = 'sine';
-                oscillator.frequency.setValueAtTime(800, audioCtx.currentTime); // Tono
-                gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime); // Volumen medio
+                oscillator.frequency.setValueAtTime(800, audioCtx.currentTime); 
+                oscillator.frequency.setValueAtTime(1200, audioCtx.currentTime + 0.2); 
+                
+                gainNode.gain.setValueAtTime(1, audioCtx.currentTime); // Volumen al máximo
                 
                 oscillator.connect(gainNode);
                 gainNode.connect(audioCtx.destination);
                 
                 oscillator.start();
-                oscillator.stop(audioCtx.currentTime + 0.4); // Dura 0.4 segundos
-            } catch(e) { console.log("Audio no soportado en este navegador"); }
+                oscillator.stop(audioCtx.currentTime + 0.6); // Dura medio segundo
+            } catch(e) { console.log("Audio falló", e); }
         };
 
         // --- COMPONENTE: EDICIÓN DE EJERCICIO (PROFESOR) ---
@@ -101,7 +129,6 @@
                             <i className="fa-regular fa-clock"></i> <input className="w-12 bg-dark-600 rounded p-1 text-center text-white outline-none focus:border focus:border-brand-500" value={localEx.rest || '90s'} onChange={(e) => handleChange('rest', e.target.value)} onBlur={handleBlur} placeholder="90s" />
                         </div>
                     </div>
-                    {/* Toggle Unilateral */}
                     <div className="mt-4 pt-3 border-t border-dark-600 flex items-center gap-2">
                         <input type="checkbox" id={`uni-${localEx.id}`} checked={localEx.isUnilateral || false} onChange={(e) => {handleChange('isUnilateral', e.target.checked); handleBlur();}} className="w-4 h-4 accent-brand-500 rounded cursor-pointer" />
                         <label htmlFor={`uni-${localEx.id}`} className="text-xs text-gray-400 cursor-pointer select-none">Ejercicio Unilateral (Separar Izq/Der)</label>
@@ -132,6 +159,9 @@
             }, [progressData, totalRows]);
 
             const updateSet = (index, field, value) => {
+                // Activar audio si toca
+                if(field === 'done') unlockAudio();
+
                 const newSets = [...localSets];
                 const wasDone = newSets[index].done;
                 newSets[index][field] = value;
@@ -272,16 +302,16 @@
                 return () => clearInterval(interval);
             }, [view, isTrainingStarted]);
 
-            // Reloj de Descanso con Alarma
+            // Reloj de Descanso con Alarma Exacta
             useEffect(() => {
                 let restInterval = null;
                 if (restTime > 0) {
                     restInterval = setInterval(() => {
                         setRestTime(t => {
                             if (t <= 1) {
-                                // ¡Llegó a cero! Vibrar y Sonar
+                                // ¡Llegó a cero! Disparamos sonido y vibración.
                                 if (navigator.vibrate) navigator.vibrate([300, 150, 300]);
-                                playBeep();
+                                playAlarm();
                                 return 0;
                             }
                             return t - 1;
@@ -319,6 +349,8 @@
 
             const handleLogin = () => {
                 if (!globalData) return;
+                unlockAudio(); // Pedimos permiso de audio apenas toca "Entrar"
+                
                 if (pinInput === globalData.profesorPin) { setView('profesor'); } 
                 else {
                     const client = globalData.clients?.find(c => c.pin === pinInput);
@@ -342,7 +374,7 @@
                 newData.routines[newClient.id] = [];
                 saveData(newData);
                 setNewClientName('');
-                showToast(`¡Alumno ${newClientName} creado con PIN ${newClient.pin}!`);
+                showToast(`¡Alumno creado! PIN: ${newClient.pin}`);
             };
 
             const addDay = (clientId) => {
@@ -585,7 +617,7 @@
                                 </div>
 
                                 <div className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-[480px] bg-black/90 backdrop-blur p-5 border-t border-dark-700">
-                                    <button onClick={() => { setIsTrainingStarted(true); setTrainingTime(0); setRestTime(0); }} className="w-full bg-brand-500 text-black font-black text-lg py-4 rounded-2xl flex items-center justify-center gap-2 hover:bg-brand-600 transition-colors shadow-lg shadow-brand-500/20">
+                                    <button onClick={() => { setIsTrainingStarted(true); setTrainingTime(0); setRestTime(0); unlockAudio(); }} className="w-full bg-brand-500 text-black font-black text-lg py-4 rounded-2xl flex items-center justify-center gap-2 hover:bg-brand-600 transition-colors shadow-lg shadow-brand-500/20">
                                         <i className="fa-solid fa-play"></i> Empezar Entrenamiento
                                     </button>
                                 </div>
