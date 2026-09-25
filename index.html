@@ -53,7 +53,6 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        // Engaño (Dummy Service Worker) para que Chrome nos permita instalar la App
         if ('serviceWorker' in navigator) {
             const swCode = "self.addEventListener('fetch', function(e) {});";
             const blob = new Blob([swCode], {type: 'application/javascript'});
@@ -65,20 +64,29 @@
         const SUPABASE_KEY = 'sb_publishable_5WHz-KSuu5BaV08EGXJJmg_dkVOUJwy';
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // --- SISTEMA DE AUDIO (DESBLOQUEO NATIVO) ---
+        // Base de datos de ejercicios para el autocompletado
+        const EXERCISE_DB = [
+            "Sentadilla Libre (Barra)", "Sentadilla Búlgara", "Sentadilla Hack", "Prensa de Piernas",
+            "Peso Muerto Rumano", "Peso Muerto Convencional", "Hip Thrust", "Extensión de Cuádriceps",
+            "Curl Femoral (Sentado)", "Curl Femoral (Tumbado)", "Elevación de Talones",
+            "Press de Banca Plano", "Press de Banca Inclinado", "Aperturas con Mancuernas", "Cruce de Poleas",
+            "Jalón al Pecho", "Remo con Barra", "Remo Gironda", "Remo en Máquina", "Dominadas",
+            "Press Militar", "Elevaciones Laterales", "Pájaros (Hombro Posterior)",
+            "Curl de Bíceps (Mancuernas)", "Curl de Bíceps (Barra Z)", "Curl Martillo",
+            "Extensión de Tríceps (Polea)", "Press Francés", "Fondos en Paralelas",
+            "Crunch Abdominal", "Plancha Isométrica", "Elevación de Piernas Colgado",
+            "Aducción de Cadera (Máquina)", "Abducción de Cadera (Máquina)"
+        ];
+
         let audioCtx = null;
-        
         const unlockAudio = () => {
             if (!audioCtx) {
                 const AudioContext = window.AudioContext || window.webkitAudioContext;
                 audioCtx = new AudioContext();
             }
-            if (audioCtx.state === 'suspended') {
-                audioCtx.resume();
-            }
+            if (audioCtx.state === 'suspended') audioCtx.resume();
         };
 
-        // Escuchamos el primer toque del usuario en la pantalla para desbloquear el sonido
         document.addEventListener('touchstart', unlockAudio, { once: true });
         document.addEventListener('click', unlockAudio, { once: true });
 
@@ -87,32 +95,73 @@
                 if (!audioCtx) unlockAudio();
                 const oscillator = audioCtx.createOscillator();
                 const gainNode = audioCtx.createGain();
-                
-                // Configuración de un beep doble llamativo
                 oscillator.type = 'sine';
                 oscillator.frequency.setValueAtTime(800, audioCtx.currentTime); 
                 oscillator.frequency.setValueAtTime(1200, audioCtx.currentTime + 0.2); 
-                
-                gainNode.gain.setValueAtTime(1, audioCtx.currentTime); // Volumen al máximo
-                
+                gainNode.gain.setValueAtTime(1, audioCtx.currentTime); 
                 oscillator.connect(gainNode);
                 gainNode.connect(audioCtx.destination);
-                
                 oscillator.start();
-                oscillator.stop(audioCtx.currentTime + 0.6); // Dura medio segundo
+                oscillator.stop(audioCtx.currentTime + 0.6); 
             } catch(e) { console.log("Audio falló", e); }
         };
 
         // --- COMPONENTE: EDICIÓN DE EJERCICIO (PROFESOR) ---
         function ExerciseRow({ exercise, onUpdate, onDelete }) {
             const [localEx, setLocalEx] = useState(exercise);
-            const handleChange = (field, value) => setLocalEx(prev => ({ ...prev, [field]: value }));
-            const handleBlur = () => onUpdate(localEx);
+            const [showSuggestions, setShowSuggestions] = useState(false);
+
+            const handleChange = (field, value) => {
+                setLocalEx(prev => ({ ...prev, [field]: value }));
+                if(field === 'name') setShowSuggestions(true);
+            };
+            
+            const handleBlur = () => {
+                setTimeout(() => {
+                    setShowSuggestions(false);
+                    onUpdate(localEx);
+                }, 200); // Pequeño retraso para permitir el clic en la sugerencia
+            };
+
+            const selectSuggestion = (name) => {
+                const updated = { ...localEx, name };
+                setLocalEx(updated);
+                setShowSuggestions(false);
+                onUpdate(updated);
+            };
+
+            const suggestions = EXERCISE_DB.filter(ex => 
+                ex.toLowerCase().includes((localEx.name || '').toLowerCase()) && 
+                localEx.name !== ex
+            ).slice(0, 5); // Mostrar solo las 5 mejores coincidencias
 
             return (
                 <div className="bg-dark-700 p-4 rounded-xl mb-4 border border-dark-600">
-                    <div className="flex justify-between items-start mb-2">
-                        <input className="bg-transparent font-bold text-lg outline-none w-5/6 text-white placeholder-gray-500" value={localEx.name} onChange={(e) => handleChange('name', e.target.value)} onBlur={handleBlur} placeholder="Nombre del ejercicio" />
+                    <div className="flex justify-between items-start mb-2 relative">
+                        <div className="w-5/6 relative">
+                            <input 
+                                className="bg-transparent font-bold text-lg outline-none w-full text-white placeholder-gray-500" 
+                                value={localEx.name} 
+                                onChange={(e) => handleChange('name', e.target.value)} 
+                                onBlur={handleBlur} 
+                                onFocus={() => setShowSuggestions(true)}
+                                placeholder="Nombre del ejercicio" 
+                            />
+                            {/* Menú de Autocompletado */}
+                            {showSuggestions && localEx.name && suggestions.length > 0 && (
+                                <div className="absolute z-50 top-full left-0 w-full mt-1 bg-dark-800 border border-dark-600 rounded-lg shadow-xl overflow-hidden">
+                                    {suggestions.map((sug, idx) => (
+                                        <div 
+                                            key={idx} 
+                                            onClick={() => selectSuggestion(sug)}
+                                            className="px-4 py-3 text-sm text-gray-300 hover:bg-brand-500 hover:text-black cursor-pointer border-b border-dark-700 last:border-0 transition-colors"
+                                        >
+                                            {sug}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                         <button onClick={onDelete} className="text-gray-500 hover:text-red-500 transition-colors px-2 py-1"><i className="fa-solid fa-trash-can"></i></button>
                     </div>
                     <div className="flex gap-4 text-sm text-gray-400 items-center overflow-x-auto hide-scrollbar pb-1">
@@ -138,10 +187,14 @@
         }
 
         // --- COMPONENTE: EJECUCIÓN DE EJERCICIO (ALUMNO) ---
-        function ClientExerciseRow({ exercise, progressData, previousWeekData, onSaveProgress, onStartRest, showToast }) {
+        function ClientExerciseRow({ exercise, progressData, previousWeekData, allWeeksData, onSaveProgress, onStartRest, showToast }) {
             const baseSetsCount = parseInt(exercise.sets) || 1;
             const isUni = exercise.isUnilateral === true;
             const totalRows = isUni ? baseSetsCount * 2 : baseSetsCount;
+
+            const [showNotes, setShowNotes] = useState(false);
+            const [showHistory, setShowHistory] = useState(false);
+            const [localNote, setLocalNote] = useState(progressData?.note || '');
 
             const [localSets, setLocalSets] = useState(() => {
                 const saved = progressData?.sets;
@@ -156,21 +209,26 @@
                 } else {
                     setLocalSets(Array.from({length: totalRows}, () => ({ weight: '', reps: '', done: false, type: 'N' })));
                 }
+                setLocalNote(progressData?.note || '');
             }, [progressData, totalRows]);
 
             const updateSet = (index, field, value) => {
-                // Activar audio si toca
                 if(field === 'done') unlockAudio();
-
                 const newSets = [...localSets];
                 const wasDone = newSets[index].done;
                 newSets[index][field] = value;
                 setLocalSets(newSets);
-                onSaveProgress(newSets);
+                onSaveProgress(newSets, localNote);
                 
                 if (field === 'done' && value === true && !wasDone) {
                     onStartRest(exercise.rest || '90s');
                 }
+            };
+
+            const handleNoteChange = (e) => {
+                const newNote = e.target.value;
+                setLocalNote(newNote);
+                onSaveProgress(localSets, newNote);
             };
 
             const addSet = () => {
@@ -180,7 +238,7 @@
                     newSets.push({ weight: '', reps: '', done: false, type: 'N' });
                 }
                 setLocalSets(newSets);
-                onSaveProgress(newSets);
+                onSaveProgress(newSets, localNote);
             };
 
             const cycleSetType = (index) => {
@@ -201,10 +259,49 @@
                         </div>
                     </div>
 
-                    <div className="flex gap-2 mb-6">
-                        <button onClick={() => showToast('Próximamente: Tutoriales en video')} className="bg-dark-700 text-sm font-bold px-4 py-2 rounded-full flex items-center gap-2 hover:bg-dark-600 transition-colors text-white border border-dark-600"><i className="fa-solid fa-play text-xs text-brand-500"></i> Tutorial</button>
-                        <button onClick={() => showToast('Próximamente: Block de notas')} className="bg-dark-700 text-sm font-bold px-4 py-2 rounded-full flex items-center gap-2 hover:bg-dark-600 transition-colors text-white border border-dark-600"><i className="fa-solid fa-pencil text-xs text-brand-500"></i> Notas</button>
+                    <div className="flex gap-2 mb-4 overflow-x-auto hide-scrollbar">
+                        <button onClick={() => {setShowHistory(!showHistory); setShowNotes(false);}} className={`text-sm font-bold px-4 py-2 rounded-full flex items-center gap-2 transition-colors border ${showHistory ? 'bg-brand-500 text-black border-brand-500' : 'bg-dark-700 text-white border-dark-600 hover:bg-dark-600'}`}>
+                            <i className="fa-solid fa-clock-rotate-left"></i> Historial
+                        </button>
+                        <button onClick={() => {setShowNotes(!showNotes); setShowHistory(false);}} className={`text-sm font-bold px-4 py-2 rounded-full flex items-center gap-2 transition-colors border ${showNotes ? 'bg-brand-500 text-black border-brand-500' : 'bg-dark-700 text-white border-dark-600 hover:bg-dark-600'}`}>
+                            <i className="fa-solid fa-pencil"></i> Notas
+                        </button>
                     </div>
+
+                    {showNotes && (
+                        <div className="mb-4 animate-slide-down origin-top">
+                            <textarea 
+                                value={localNote} 
+                                onChange={handleNoteChange} 
+                                placeholder="Anotá acá configuraciones de la máquina, sensaciones, etc..." 
+                                className="w-full bg-dark-800 text-white p-3 rounded-xl outline-none border border-dark-600 focus:border-brand-500 text-sm resize-none h-24 shadow-inner"
+                            />
+                        </div>
+                    )}
+
+                    {showHistory && (
+                        <div className="mb-4 bg-dark-800 p-4 rounded-xl border border-dark-600 animate-slide-down origin-top shadow-inner text-sm">
+                            <h5 className="font-bold text-white mb-3 flex items-center gap-2"><i className="fa-solid fa-chart-simple text-brand-500"></i> Progreso en este mesociclo</h5>
+                            {[1, 2, 3, 4].map(w => {
+                                const wData = allWeeksData?.[w]?.[exercise.id]?.sets;
+                                if (!wData || wData.length === 0) return null;
+                                return (
+                                    <div key={w} className="mb-3 pb-3 border-b border-dark-700 last:border-0 last:mb-0 last:pb-0 text-gray-300">
+                                        <span className="text-brand-500 font-bold block mb-1">Semana {w}:</span>
+                                        <div className="flex flex-wrap gap-2">
+                                            {wData.map((s, idx) => {
+                                                if(s.weight && s.reps) return (
+                                                    <span key={idx} className="bg-dark-700 px-2 py-1 rounded text-xs border border-dark-600">{s.weight}kg x {s.reps}</span>
+                                                );
+                                                return null;
+                                            })}
+                                        </div>
+                                    </div>
+                                )
+                            })}
+                            {!allWeeksData && <p className="text-gray-500 text-xs italic">Aún no hay registros en otras semanas.</p>}
+                        </div>
+                    )}
                     
                     <div className="grid grid-cols-[auto_1fr_1fr_1fr_auto] gap-2 mb-2 text-[10px] text-gray-500 font-bold uppercase tracking-widest px-2">
                         <span className="w-8 text-center">Serie</span>
@@ -278,7 +375,6 @@
             const [trainingTime, setTrainingTime] = useState(0);
             const [restTime, setRestTime] = useState(0); 
 
-            // Sistema de Notificaciones (Toasts)
             const [toast, setToast] = useState(null);
             const showToast = (msg, type = 'info') => {
                 setToast({ msg, type });
@@ -293,7 +389,6 @@
                 return () => { supabase.removeChannel(channel); };
             }, []);
 
-            // Reloj General
             useEffect(() => {
                 let interval = null;
                 if (view === 'cliente_entrenamiento' && isTrainingStarted) {
@@ -302,14 +397,12 @@
                 return () => clearInterval(interval);
             }, [view, isTrainingStarted]);
 
-            // Reloj de Descanso con Alarma Exacta
             useEffect(() => {
                 let restInterval = null;
                 if (restTime > 0) {
                     restInterval = setInterval(() => {
                         setRestTime(t => {
                             if (t <= 1) {
-                                // ¡Llegó a cero! Disparamos sonido y vibración.
                                 if (navigator.vibrate) navigator.vibrate([300, 150, 300]);
                                 playAlarm();
                                 return 0;
@@ -349,7 +442,7 @@
 
             const handleLogin = () => {
                 if (!globalData) return;
-                unlockAudio(); // Pedimos permiso de audio apenas toca "Entrar"
+                unlockAudio(); 
                 
                 if (pinInput === globalData.profesorPin) { setView('profesor'); } 
                 else {
@@ -394,6 +487,25 @@
                 showToast('Plantilla eliminada');
             };
 
+            const cloneDay = (clientId, dayId) => {
+                const newData = JSON.parse(JSON.stringify(globalData));
+                const dayToClone = newData.routines[clientId].find(d => d.id === dayId);
+                if (!dayToClone) return;
+
+                const newDay = {
+                    id: Date.now().toString(),
+                    name: dayToClone.name + " (Copia)",
+                    exercises: dayToClone.exercises.map(ex => ({
+                        ...ex,
+                        id: Math.random().toString(36).substr(2, 9) // Nuevo ID para cada ejercicio clonado
+                    }))
+                };
+
+                newData.routines[clientId].push(newDay);
+                saveData(newData);
+                showToast('Plantilla duplicada con éxito');
+            };
+
             const addExercise = (clientId, dayId) => {
                 const newData = JSON.parse(JSON.stringify(globalData));
                 const day = newData.routines[clientId].find(d => d.id === dayId);
@@ -417,13 +529,15 @@
             };
 
             // ALUMNO
-            const saveClientProgress = (exerciseId, setsArray, week) => {
+            const saveClientProgress = (exerciseId, setsArray, noteString, week) => {
                 const newData = JSON.parse(JSON.stringify(globalData));
                 if (!newData.progress[currentUser.id]) newData.progress[currentUser.id] = {};
                 if (!newData.progress[currentUser.id][week]) newData.progress[currentUser.id][week] = {};
                 if (!newData.progress[currentUser.id][week][exerciseId]) newData.progress[currentUser.id][week][exerciseId] = {};
                 
-                newData.progress[currentUser.id][week][exerciseId].sets = setsArray;
+                if (setsArray) newData.progress[currentUser.id][week][exerciseId].sets = setsArray;
+                if (noteString !== undefined) newData.progress[currentUser.id][week][exerciseId].note = noteString;
+                
                 saveData(newData);
             };
 
@@ -431,7 +545,6 @@
 
             return (
                 <div className="relative">
-                    {/* Renderizado del Toast Flotante */}
                     {toast && (
                         <div className={`fixed top-6 left-1/2 transform -translate-x-1/2 z-50 px-6 py-3 rounded-full text-sm font-bold shadow-2xl animate-slide-down text-center flex items-center gap-3 whitespace-nowrap ${toast.type === 'error' ? 'bg-red-600 text-white' : 'bg-brand-500 text-black'}`}>
                             {toast.type === 'error' ? <i className="fa-solid fa-triangle-exclamation"></i> : <i className="fa-solid fa-bell"></i>}
@@ -500,7 +613,10 @@
                                                             <h4 className="font-bold text-lg text-white truncate lowercase">{day.name}</h4>
                                                             <p className="text-sm text-gray-500 truncate">{day.exercises.map(e => e.name).join(', ') || 'Sin ejercicios'}</p>
                                                         </div>
-                                                        <button onClick={(e) => { e.stopPropagation(); deleteDay(activeClient.id, day.id); }} className="text-gray-500 px-4 py-2 hover:text-red-500 transition-colors"><i className="fa-solid fa-trash-can"></i></button>
+                                                        <div className="flex items-center gap-1">
+                                                            <button onClick={(e) => { e.stopPropagation(); cloneDay(activeClient.id, day.id); }} className="text-gray-400 px-3 py-2 hover:text-brand-500 transition-colors"><i className="fa-solid fa-copy"></i></button>
+                                                            <button onClick={(e) => { e.stopPropagation(); deleteDay(activeClient.id, day.id); }} className="text-gray-400 px-3 py-2 hover:text-red-500 transition-colors"><i className="fa-solid fa-trash-can"></i></button>
+                                                        </div>
                                                     </div>
                                                 ))}
                                             </div>
@@ -578,7 +694,7 @@
                             
                             <div className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-[480px] bg-black/95 backdrop-blur border-t border-dark-700 flex justify-around p-4 text-gray-500 pb-6">
                                 <button className="text-brand-500 flex flex-col items-center gap-1"><i className="fa-solid fa-dumbbell text-xl"></i><span className="text-[10px] font-bold">Entrenar</span></button>
-                                <button onClick={() => showToast('Próximamente: Historial y estadísticas')} className="hover:text-white transition-colors flex flex-col items-center gap-1"><i className="fa-solid fa-chart-line text-xl"></i><span className="text-[10px] font-bold">Progreso</span></button>
+                                <button onClick={() => showToast('Próximamente: Historial general de todas las rutinas')} className="hover:text-white transition-colors flex flex-col items-center gap-1"><i className="fa-solid fa-chart-line text-xl"></i><span className="text-[10px] font-bold">Progreso</span></button>
                                 <button onClick={() => showToast('Próximamente: Perfil y configuración')} className="hover:text-white transition-colors flex flex-col items-center gap-1"><i className="fa-regular fa-user text-xl"></i><span className="text-[10px] font-bold">Perfil</span></button>
                             </div>
                         </div>
@@ -636,7 +752,8 @@
                                             exercise={ex} 
                                             progressData={globalData.progress?.[currentUser.id]?.[activeWeek]?.[ex.id]} 
                                             previousWeekData={globalData.progress?.[currentUser.id]?.[activeWeek > 1 ? activeWeek - 1 : 1]?.[ex.id]}
-                                            onSaveProgress={(setsArray) => saveClientProgress(ex.id, setsArray, activeWeek)} 
+                                            allWeeksData={globalData.progress?.[currentUser.id]}
+                                            onSaveProgress={(setsArray, noteString) => saveClientProgress(ex.id, setsArray, noteString, activeWeek)} 
                                             onStartRest={startRest}
                                             showToast={showToast}
                                         />
