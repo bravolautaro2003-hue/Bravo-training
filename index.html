@@ -30,11 +30,12 @@
                 extend: {
                     colors: {
                         brand: { 500: '#FF5E00', 600: '#E05200', glow: 'rgba(255, 94, 0, 0.4)' },
-                        dark: { 950: '#050507', 900: '#0a0a0c', 800: '#141418', 700: '#1e1e24', 600: '#2c2c35' }
+                        dark: { 950: '#050507', 900: '#0a0a0c', 800: '#131318', 700: '#1d1d24', 600: '#2c2c35' }
                     },
                     animation: {
                         'toast-down': 'toastDown 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards',
                         'fade-in': 'fadeIn 0.25s ease-out forwards',
+                        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
                     },
                     keyframes: {
                         toastDown: {
@@ -52,11 +53,37 @@
     </script>
     <style>
         body { -webkit-tap-highlight-color: transparent; background-color: #050507; color: #f3f3f6; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-        .app-container { max-width: 480px; margin: 0 auto; min-height: 100vh; background-color: #0a0a0c; border-left: 1px solid #1e1e24; border-right: 1px solid #1e1e24; box-shadow: 0 0 40px rgba(0,0,0,0.8); }
+        .app-container { max-width: 480px; margin: 0 auto; min-height: 100vh; background-color: #0a0a0c; border-left: 1px solid #1e1e24; border-right: 1px solid #1e1e24; box-shadow: 0 0 50px rgba(0,0,0,0.9); position: relative; overflow: hidden; }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-        .glass-panel { background: rgba(20, 20, 24, 0.75); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); }
+        
+        /* Estética de fondo inmersiva con siluetas de pesas */
+        .app-container::before {
+            content: "";
+            position: absolute;
+            top: -50px;
+            right: -50px;
+            width: 250px;
+            height: 250px;
+            background: radial-gradient(circle, rgba(255, 94, 0, 0.08) 0%, rgba(10, 10, 12, 0) 70%);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .bg-watermark {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            font-size: 140px;
+            color: rgba(255, 255, 255, 0.015);
+            pointer-events: none;
+            z-index: 0;
+            transform: rotate(-15deg);
+        }
+        
+        .glass-panel { background: rgba(22, 22, 28, 0.7); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.06); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37); }
+        .glass-header { background: rgba(10, 10, 12, 0.85); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
     </style>
 </head>
 <body class="antialiased">
@@ -109,22 +136,29 @@
             } catch(e) { console.log("Audio falló", e); }
         };
 
-        // --- INPUT CONTROLADO PARA DÍAS Y BLOQUES ---
+        // --- INPUT NATIVO OPTIMIZADO (Escritura veloz sin lag) ---
         function EditableTitle({ initialValue, placeholder, className, onSave }) {
-            const [text, setText] = useState(initialValue);
+            const inputRef = useRef(null);
 
             useEffect(() => {
-                setText(initialValue);
+                if (inputRef.current && inputRef.current.value !== initialValue) {
+                    inputRef.current.value = initialValue || '';
+                }
             }, [initialValue]);
 
             return (
                 <input 
+                    ref={inputRef}
                     type="text"
-                    className={className}
-                    value={text}
+                    defaultValue={initialValue || ''}
                     placeholder={placeholder}
-                    onChange={(e) => setText(e.target.value)}
-                    onBlur={() => onSave(text)}
+                    className={className}
+                    onBlur={(e) => onSave(e.target.value)}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                            e.target.blur();
+                        }
+                    }}
                 />
             );
         }
@@ -188,7 +222,7 @@
             }
 
             return (
-                <div className="glass-panel p-4 rounded-2xl mb-4 border border-dark-600 relative z-10 shadow-lg">
+                <div className="glass-panel p-4 rounded-2xl mb-4 relative z-10 shadow-xl border border-white/5">
                     <div className="flex justify-between items-start mb-3 relative">
                         <div className="w-5/6 relative">
                             <input 
@@ -200,7 +234,7 @@
                                 placeholder="Nombre del ejercicio" 
                             />
                             {showSuggestions && localEx.name && suggestions.length > 0 && (
-                                <div className="absolute z-50 top-full left-0 w-full mt-1 bg-dark-800 border border-dark-600 rounded-xl shadow-2xl overflow-hidden backdrop-blur-md">
+                                <div className="absolute z-50 top-full left-0 w-full mt-1 bg-dark-800 border border-dark-600 rounded-xl shadow-2xl overflow-hidden backdrop-blur-xl">
                                     {suggestions.map((sug, idx) => (
                                         <div 
                                             key={idx} 
@@ -221,7 +255,7 @@
 
                     <div className="mb-3 pt-1">
                         <div className="flex items-center justify-between mb-2">
-                            <span className="text-[10px] font-black text-brand-500 uppercase tracking-widest">Programación Semanal:</span>
+                            <span className="text-[10px] font-black text-brand-500 uppercase tracking-widest flex items-center gap-1.5"><i className="fa-solid fa-sliders text-xs"></i> Programación Semanal:</span>
                             <div className="flex bg-dark-900 rounded-lg p-0.5 border border-dark-600">
                                 {[1, 2, 3, 4].map(w => (
                                     <button 
@@ -362,10 +396,10 @@
             };
 
             return (
-                <div className="mb-10">
+                <div className="mb-10 relative z-10">
                     <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-3">
-                            <div className="w-11 h-11 bg-dark-700 rounded-xl flex items-center justify-center text-brand-500 shadow-lg border border-dark-600">
+                            <div className="w-11 h-11 bg-dark-700 rounded-2xl flex items-center justify-center text-brand-500 shadow-lg border border-white/5">
                                 <i className="fa-solid fa-dumbbell text-lg"></i>
                             </div>
                             <div>
@@ -376,17 +410,17 @@
                     </div>
 
                     {exercise.coachNote && (
-                        <div className="bg-dark-800 border-l-4 border-brand-500 p-3 rounded-r-xl mb-4 flex gap-3 items-start shadow-inner">
+                        <div className="bg-dark-800/90 border-l-4 border-brand-500 p-3 rounded-r-xl mb-4 flex gap-3 items-start shadow-inner">
                             <i className="fa-solid fa-circle-info text-brand-500 mt-0.5"></i>
                             <p className="text-xs text-gray-300 whitespace-pre-wrap leading-relaxed">{exercise.coachNote}</p>
                         </div>
                     )}
 
                     <div className="flex gap-2 mb-4">
-                        <button onClick={() => {setShowHistory(!showHistory); setShowNotes(false);}} className={`text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-2 transition-all border ${showHistory ? 'bg-brand-500 text-white border-brand-500 shadow-md shadow-brand-500/20' : 'bg-dark-800 text-gray-300 border-dark-600 hover:bg-dark-700'}`}>
+                        <button onClick={() => {setShowHistory(!showHistory); setShowNotes(false);}} className={`text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-2 transition-all border ${showHistory ? 'bg-brand-500 text-white border-brand-500 shadow-md shadow-brand-500/25' : 'bg-dark-800 text-gray-300 border-dark-600 hover:bg-dark-700'}`}>
                             <i className="fa-solid fa-clock-rotate-left"></i> Historial
                         </button>
-                        <button onClick={() => {setShowNotes(!showNotes); setShowHistory(false);}} className={`text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-2 transition-all border ${showNotes ? 'bg-brand-500 text-white border-brand-500 shadow-md shadow-brand-500/20' : 'bg-dark-800 text-gray-300 border-dark-600 hover:bg-dark-700'}`}>
+                        <button onClick={() => {setShowNotes(!showNotes); setShowHistory(false);}} className={`text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-2 transition-all border ${showNotes ? 'bg-brand-500 text-white border-brand-500 shadow-md shadow-brand-500/25' : 'bg-dark-800 text-gray-300 border-dark-600 hover:bg-dark-700'}`}>
                             <i className="fa-solid fa-pencil"></i> Notas personales
                         </button>
                     </div>
@@ -746,6 +780,8 @@
 
             return (
                 <div className="relative">
+                    <div className="bg-watermark"><i className="fa-solid fa-dumbbell"></i></div>
+
                     {toast && (
                         <div className={`fixed top-6 left-1/2 transform -translate-x-1/2 z-50 px-6 py-3 rounded-2xl text-sm font-bold shadow-2xl animate-toast-down text-center flex items-center gap-3 whitespace-nowrap ${toast.type === 'error' ? 'bg-red-600 text-white' : 'bg-brand-500 text-white shadow-brand-500/40'}`}>
                             {toast.type === 'error' ? <i className="fa-solid fa-triangle-exclamation"></i> : <i className="fa-solid fa-bolt"></i>}
@@ -754,29 +790,30 @@
                     )}
 
                     {view === 'home' && (
-                        <div className="app-container flex flex-col justify-between p-6 bg-dark-900 h-screen">
+                        <div className="app-container flex flex-col justify-between p-6 bg-dark-900 h-screen relative z-10">
                             <div></div>
                             <div className="text-center animate-fade-in my-auto">
-                                <div className="inline-flex justify-center items-center w-24 h-24 bg-dark-800 rounded-3xl border border-brand-500/30 text-brand-500 mb-6 shadow-[0_0_30px_rgba(255,94,0,0.2)]">
-                                    <i className="fa-solid fa-fire text-4xl"></i>
+                                <div className="inline-flex justify-center items-center w-28 h-28 bg-dark-800 rounded-3xl border border-brand-500/30 text-brand-500 mb-6 shadow-[0_0_40px_rgba(255,94,0,0.25)] relative">
+                                    <div className="absolute inset-0 rounded-3xl bg-brand-500/10 animate-pulse"></div>
+                                    <i className="fa-solid fa-fire text-4xl relative z-10"></i>
                                 </div>
                                 <h1 className="text-3xl font-black text-white uppercase tracking-wider mb-1">Entrenamiento</h1>
-                                <h2 className="text-lg font-bold text-brand-500 tracking-widest uppercase">y salud</h2>
+                                <h2 className="text-xs font-black text-brand-500 tracking-[0.3em] uppercase">y salud alta gama</h2>
                             </div>
-                            <div className="glass-panel p-6 rounded-3xl shadow-2xl mb-4">
-                                <input type="password" placeholder="INGRESA TU PIN" className="w-full bg-dark-900 p-4 rounded-2xl text-center text-xl tracking-[0.4em] outline-none mb-4 text-white border border-dark-600 focus:border-brand-500 transition-colors font-bold placeholder:tracking-normal placeholder:font-normal placeholder:text-gray-500" value={pinInput} onChange={(e) => setPinInput(e.target.value)} />
+                            <div className="glass-panel p-6 rounded-3xl shadow-2xl mb-4 border border-white/5">
+                                <input type="password" placeholder="INGRESA TU PIN" className="w-full bg-dark-900 p-4 rounded-2xl text-center text-xl tracking-[0.4em] outline-none mb-4 text-white border border-dark-600 focus:border-brand-500 transition-colors font-bold placeholder:tracking-normal placeholder:font-normal placeholder:text-gray-500 shadow-inner" value={pinInput} onChange={(e) => setPinInput(e.target.value)} />
                                 <button onClick={handleLogin} className="w-full bg-brand-500 text-white py-4 rounded-2xl font-black text-base hover:bg-brand-600 transition-all shadow-lg shadow-brand-500/30 uppercase tracking-wider">Entrar</button>
                             </div>
                         </div>
                     )}
 
                     {view === 'profesor' && (
-                        <div className="app-container pb-20">
+                        <div className="app-container pb-20 relative z-10">
                             {activeClient ? (
                                 activeDayId && globalData.routines[activeClient.id]?.find(d => d.id === activeDayId) ? (
                                     <>
-                                        <header className="p-4 flex items-center justify-between sticky top-0 bg-dark-900/90 backdrop-blur z-50 border-b border-dark-700">
-                                            <button onClick={() => setActiveDayId(null)} className="text-brand-500 w-10 h-10 flex items-center justify-center hover:text-white transition-colors bg-dark-800 rounded-xl"><i className="fa-solid fa-arrow-left text-base"></i></button>
+                                        <header className="p-4 flex items-center justify-between sticky top-0 glass-header z-50">
+                                            <button onClick={() => setActiveDayId(null)} className="text-brand-500 w-10 h-10 flex items-center justify-center hover:text-white transition-colors bg-dark-800 rounded-xl border border-white/5"><i className="fa-solid fa-arrow-left text-base"></i></button>
                                             <h2 className="font-bold text-base text-white tracking-wide">Editar Plantilla</h2>
                                             <div className="w-10"></div>
                                         </header>
@@ -795,7 +832,7 @@
                                                 return (
                                                     <div className="space-y-6">
                                                         {sections.map((sec, secIdx) => (
-                                                            <div key={sec.id || secIdx} className="bg-dark-800 p-4 rounded-3xl border border-dark-600 shadow-xl">
+                                                            <div key={sec.id || secIdx} className="bg-dark-800/80 backdrop-blur-md p-4 rounded-3xl border border-white/5 shadow-xl">
                                                                 <div className="flex items-center justify-between mb-4 pb-2 border-b border-dark-700">
                                                                     <EditableTitle 
                                                                         initialValue={sec.name}
@@ -818,13 +855,13 @@
                                                                     />
                                                                 ))}
 
-                                                                <button onClick={() => addExerciseToSection(activeClient.id, activeDayId, sec.id)} className="w-full bg-dark-700 text-brand-500 font-bold py-3 rounded-2xl mt-2 text-xs uppercase tracking-wider border border-dark-600 hover:bg-dark-600 transition-colors shadow-sm">
-                                                                    <i className="fa-solid fa-plus mr-1.5"></i> Agregar ejercicio
+                                                                <button onClick={() => addExerciseToSection(activeClient.id, activeDayId, sec.id)} className="w-full bg-dark-700 text-brand-500 font-bold py-3.5 rounded-2xl mt-2 text-xs uppercase tracking-wider border border-white/5 hover:bg-dark-600 transition-colors shadow-sm flex items-center justify-center gap-2">
+                                                                    <i className="fa-solid fa-plus"></i> Agregar ejercicio
                                                                 </button>
                                                             </div>
                                                         ))}
 
-                                                        <button onClick={() => addSection(activeClient.id, activeDayId)} className="w-full bg-dark-800 text-white font-bold py-4 rounded-2xl mt-4 border border-dark-600 hover:bg-dark-700 transition-colors shadow-lg flex items-center justify-center gap-2 text-sm uppercase tracking-wide">
+                                                        <button onClick={() => addSection(activeClient.id, activeDayId)} className="w-full bg-dark-800 text-white font-bold py-4 rounded-2xl mt-4 border border-white/5 hover:bg-dark-700 transition-colors shadow-lg flex items-center justify-center gap-2 text-sm uppercase tracking-wide">
                                                             <i className="fa-solid fa-layer-group text-brand-500"></i> Nuevo bloque
                                                         </button>
                                                     </div>
@@ -834,8 +871,8 @@
                                     </>
                                 ) : (
                                     <>
-                                        <header className="p-4 flex items-center justify-between sticky top-0 bg-dark-900/90 backdrop-blur z-10 border-b border-dark-700">
-                                            <button onClick={() => setActiveClient(null)} className="text-brand-500 w-10 h-10 flex items-center justify-center hover:text-white transition-colors bg-dark-800 rounded-xl"><i className="fa-solid fa-arrow-left text-base"></i></button>
+                                        <header className="p-4 flex items-center justify-between sticky top-0 glass-header z-10">
+                                            <button onClick={() => setActiveClient(null)} className="text-brand-500 w-10 h-10 flex items-center justify-center hover:text-white transition-colors bg-dark-800 rounded-xl border border-white/5"><i className="fa-solid fa-arrow-left text-base"></i></button>
                                             <h2 className="font-bold text-base text-white tracking-wide">{activeClient.name}</h2>
                                             <div className="w-10"></div>
                                         </header>
@@ -846,7 +883,7 @@
                                                 {(globalData.routines[activeClient.id] || []).map(day => {
                                                     const totalEx = day.sections ? day.sections.reduce((acc, s) => acc + (s.exercises?.length || 0), 0) : (day.exercises?.length || 0);
                                                     return (
-                                                        <div key={day.id} onClick={() => setActiveDayId(day.id)} className="glass-panel p-4 rounded-2xl flex items-center gap-4 cursor-pointer hover:border-brand-500/50 transition-all shadow-md group">
+                                                        <div key={day.id} onClick={() => setActiveDayId(day.id)} className="glass-panel p-4 rounded-2xl flex items-center gap-4 cursor-pointer hover:border-brand-500/50 transition-all shadow-md group border border-white/5">
                                                             <div className="w-14 h-14 bg-dark-800 rounded-xl shrink-0 flex items-center justify-center text-brand-500 border border-dark-600 group-hover:scale-105 transition-transform">
                                                                 <i className="fa-solid fa-dumbbell text-xl"></i>
                                                             </div>
@@ -870,19 +907,21 @@
                                 )
                             ) : (
                                 <>
-                                    <header className="p-5 flex justify-between items-center bg-dark-900 sticky top-0 border-b border-dark-700 z-10">
-                                        <h2 className="font-black text-xl text-white uppercase tracking-wider">Panel Profe</h2>
-                                        <button onClick={() => setView('home')} className="text-xs font-bold text-gray-400 bg-dark-800 px-4 py-2 rounded-xl hover:text-white transition-colors">Salir</button>
+                                    <header className="p-5 flex justify-between items-center glass-header sticky top-0 z-10">
+                                        <h2 className="font-black text-xl text-white uppercase tracking-wider flex items-center gap-2">
+                                            <i className="fa-solid fa-shield-halved text-brand-500 text-sm"></i> Panel Profe
+                                        </h2>
+                                        <button onClick={() => setView('home')} className="text-xs font-bold text-gray-400 bg-dark-800 px-4 py-2 rounded-xl hover:text-white transition-colors border border-white/5">Salir</button>
                                     </header>
                                     <div className="p-5 space-y-4">
-                                        <div className="flex gap-2 bg-dark-800 p-2 rounded-2xl border border-dark-600 shadow-inner mb-6">
+                                        <div className="flex gap-2 bg-dark-800/80 p-2 rounded-2xl border border-white/5 shadow-inner mb-6">
                                             <input className="flex-1 bg-transparent px-4 outline-none text-sm text-white placeholder-gray-500 font-medium" placeholder="Nuevo alumno..." value={newClientName} onChange={(e) => setNewClientName(e.target.value)} />
                                             <button onClick={addClient} className="bg-brand-500 rounded-xl w-11 h-11 flex items-center justify-center text-white hover:bg-brand-600 transition-colors shadow-md shadow-brand-500/30 font-bold"><i className="fa-solid fa-plus"></i></button>
                                         </div>
 
                                         <h3 className="font-black text-xs text-gray-400 uppercase tracking-widest mb-2">Listado de Alumnos</h3>
                                         {globalData.clients?.map(client => (
-                                            <div key={client.id} onClick={() => setActiveClient(client)} className="glass-panel p-4 rounded-2xl flex justify-between items-center cursor-pointer hover:border-brand-500/50 transition-all shadow-md">
+                                            <div key={client.id} onClick={() => setActiveClient(client)} className="glass-panel p-4 rounded-2xl flex justify-between items-center cursor-pointer hover:border-brand-500/50 transition-all shadow-md border border-white/5">
                                                 <div>
                                                     <p className="font-bold text-base text-white">{client.name}</p>
                                                     <p className="text-xs text-brand-500 mt-1 font-semibold"><i className="fa-solid fa-key mr-1"></i> PIN: {client.pin}</p>
@@ -897,20 +936,20 @@
                     )}
 
                     {view === 'cliente_listado' && (
-                        <div className="app-container pb-24">
-                            <header className="p-5 flex justify-between items-center sticky top-0 bg-dark-900/90 backdrop-blur z-10 border-b border-dark-700">
-                                <h1 className="text-sm font-black text-white tracking-widest flex items-center gap-2">
-                                    <div className="w-7 h-7 bg-brand-500 rounded-lg flex items-center justify-center text-white text-xs shadow-md shadow-brand-500/40">
+                        <div className="app-container pb-24 relative z-10">
+                            <header className="p-5 flex justify-between items-center sticky top-0 glass-header z-10">
+                                <h1 className="text-sm font-black text-white tracking-widest flex items-center gap-2.5">
+                                    <div className="w-7 h-7 bg-brand-500 rounded-xl flex items-center justify-center text-white text-xs shadow-md shadow-brand-500/40">
                                         <i className="fa-solid fa-fire"></i>
                                     </div>
                                     <span className="uppercase tracking-wider">Entrenamiento & Salud</span>
                                 </h1>
-                                <button onClick={() => setView('home')} className="text-white bg-dark-800 px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-sm border border-dark-600">Salir</button>
+                                <button onClick={() => setView('home')} className="text-white bg-dark-800 px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-sm border border-white/5">Salir</button>
                             </header>
 
                             <div className="p-5">
                                 <h3 className="font-black text-xs text-gray-400 uppercase tracking-widest mb-3">Seleccionar semana</h3>
-                                <div className="flex bg-dark-800 rounded-2xl p-1.5 mb-8 border border-dark-600 shadow-inner">
+                                <div className="flex bg-dark-800/90 rounded-2xl p-1.5 mb-8 border border-white/5 shadow-inner">
                                     {[1, 2, 3, 4].map(num => (
                                         <button key={num} onClick={() => setActiveWeek(num)} className={`flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all ${activeWeek === num ? 'bg-brand-500 text-white shadow-lg shadow-brand-500/30' : 'text-gray-400 hover:text-white'}`}>Sem. {num}</button>
                                     ))}
@@ -921,8 +960,8 @@
                                     {(globalData.routines[currentUser.id] || []).map(day => {
                                         const totalEx = day.sections ? day.sections.reduce((acc, s) => acc + (s.exercises?.length || 0), 0) : (day.exercises?.length || 0);
                                         return (
-                                            <div key={day.id} onClick={() => {setActiveDayId(day.id); setIsTrainingStarted(false); setView('cliente_entrenamiento');}} className="glass-panel p-4 rounded-2xl flex items-center gap-4 cursor-pointer group hover:border-brand-500/50 transition-all shadow-md">
-                                                <div className="w-14 h-14 bg-dark-800 rounded-xl shrink-0 flex items-center justify-center text-brand-500 border border-dark-600 group-hover:scale-105 transition-transform shadow-inner">
+                                            <div key={day.id} onClick={() => {setActiveDayId(day.id); setIsTrainingStarted(false); setView('cliente_entrenamiento');}} className="glass-panel p-4 rounded-2xl flex items-center gap-4 cursor-pointer group hover:border-brand-500/50 transition-all shadow-md border border-white/5">
+                                                <div className="w-14 h-14 bg-dark-800 rounded-2xl shrink-0 flex items-center justify-center text-brand-500 border border-dark-600 group-hover:scale-105 transition-transform shadow-inner">
                                                     <i className="fa-solid fa-dumbbell text-xl"></i>
                                                 </div>
                                                 <div className="flex-1 overflow-hidden">
@@ -936,7 +975,7 @@
                                 </div>
                             </div>
                             
-                            <div className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-[480px] bg-dark-900/95 backdrop-blur border-t border-dark-700 flex justify-around p-3 text-gray-400 pb-5 z-20">
+                            <div className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-[480px] bg-dark-900/95 backdrop-blur border-t border-white/5 flex justify-around p-3 text-gray-400 pb-5 z-20">
                                 <button className="text-brand-500 flex flex-col items-center gap-1"><i className="fa-solid fa-dumbbell text-lg"></i><span className="text-[10px] font-black uppercase tracking-wider">Entrenar</span></button>
                                 <button onClick={() => showToast('Próximamente: Estadísticas de progreso')} className="hover:text-white transition-colors flex flex-col items-center gap-1"><i className="fa-solid fa-chart-line text-lg"></i><span className="text-[10px] font-black uppercase tracking-wider">Progreso</span></button>
                                 <button onClick={() => showToast('Próximamente: Perfil de usuario')} className="hover:text-white transition-colors flex flex-col items-center gap-1"><i className="fa-regular fa-user text-lg"></i><span className="text-[10px] font-black uppercase tracking-wider">Perfil</span></button>
@@ -946,10 +985,10 @@
 
                     {view === 'cliente_entrenamiento' && (
                         !isTrainingStarted ? (
-                            <div className="app-container pb-24">
-                                <header className="p-4 flex items-center justify-between sticky top-0 bg-dark-900/90 backdrop-blur z-10 border-b border-dark-700">
-                                    <button onClick={() => setView('cliente_listado')} className="text-brand-500 w-10 h-10 flex items-center justify-center hover:text-white transition-colors bg-dark-800 rounded-xl"><i className="fa-solid fa-arrow-left text-base"></i></button>
-                                    <button onClick={() => showToast('Próximamente: IA adaptativa')} className="bg-dark-800 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 border border-dark-600 hover:border-brand-500 transition-colors"><i className="fa-solid fa-wand-magic-sparkles text-brand-500"></i> Adaptar</button>
+                            <div className="app-container pb-24 relative z-10">
+                                <header className="p-4 flex items-center justify-between sticky top-0 glass-header z-10">
+                                    <button onClick={() => setView('cliente_listado')} className="text-brand-500 w-10 h-10 flex items-center justify-center hover:text-white transition-colors bg-dark-800 rounded-xl border border-white/5"><i className="fa-solid fa-arrow-left text-base"></i></button>
+                                    <button onClick={() => showToast('Próximamente: IA adaptativa')} className="bg-dark-800 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 border border-white/5 hover:border-brand-500 transition-colors"><i className="fa-solid fa-wand-magic-sparkles text-brand-500"></i> Adaptar</button>
                                 </header>
 
                                 <div className="p-5">
@@ -969,8 +1008,8 @@
                                                             {sec.exercises?.map((ex) => {
                                                                 const wCfg = ex.weeks?.[activeWeek] || { sets: ex.sets || '4', reps: ex.reps || '10' };
                                                                 return (
-                                                                    <div key={ex.id} className="glass-panel p-3.5 rounded-2xl flex gap-3.5 items-center border border-dark-600 shadow-sm">
-                                                                        <div className="w-12 h-12 bg-dark-800 rounded-xl flex items-center justify-center shrink-0 border border-dark-600 text-brand-500">
+                                                                    <div key={ex.id} className="glass-panel p-3.5 rounded-2xl flex gap-3.5 items-center border border-white/5 shadow-sm">
+                                                                        <div className="w-12 h-12 bg-dark-800 rounded-2xl flex items-center justify-center shrink-0 border border-dark-600 text-brand-500">
                                                                             <i className="fa-solid fa-dumbbell text-base"></i>
                                                                         </div>
                                                                         <div className="flex-1 overflow-hidden">
@@ -988,17 +1027,17 @@
                                     })()}
                                 </div>
 
-                                <div className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-[480px] bg-dark-900/95 backdrop-blur p-4 border-t border-dark-700 z-20">
+                                <div className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-[480px] bg-dark-900/95 backdrop-blur p-4 border-t border-white/5 z-20">
                                     <button onClick={() => { setIsTrainingStarted(true); setTrainingTime(0); setRestTime(0); unlockAudio(); }} className="w-full bg-brand-500 text-white font-black text-sm uppercase tracking-wider py-4 rounded-2xl flex items-center justify-center gap-2 hover:bg-brand-600 transition-all shadow-xl shadow-brand-500/30">
                                         <i className="fa-solid fa-play"></i> Empezar Entrenamiento
                                     </button>
                                 </div>
                             </div>
                         ) : (
-                            <div className="app-container pb-20">
-                                <header className="p-4 flex items-center justify-between sticky top-0 bg-dark-900/95 backdrop-blur z-20 border-b border-dark-700 shadow-md">
-                                    <button onClick={() => showToast('Sesión en curso')} className="text-brand-500 text-xs font-black uppercase tracking-wider flex items-center gap-2 bg-dark-800 px-3.5 py-2 rounded-xl border border-dark-600"><i className="fa-solid fa-stopwatch animate-pulse"></i> {formatTime(trainingTime)}</button>
-                                    <button onClick={() => { setIsTrainingStarted(false); showToast(`¡Entrenamiento finalizado! Tiempo: ${formatTime(trainingTime)}`); setView('cliente_listado'); }} className="bg-dark-800 text-brand-500 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider border border-dark-600 hover:bg-dark-700 transition-colors">Terminar</button>
+                            <div className="app-container pb-20 relative z-10">
+                                <header className="p-4 flex items-center justify-between sticky top-0 glass-header z-20 shadow-md">
+                                    <button onClick={() => showToast('Sesión en curso')} className="text-brand-500 text-xs font-black uppercase tracking-wider flex items-center gap-2 bg-dark-800 px-3.5 py-2 rounded-xl border border-white/5"><i className="fa-solid fa-stopwatch animate-pulse"></i> {formatTime(trainingTime)}</button>
+                                    <button onClick={() => { setIsTrainingStarted(false); showToast(`¡Entrenamiento finalizado! Tiempo: ${formatTime(trainingTime)}`); setView('cliente_listado'); }} className="bg-dark-800 text-brand-500 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider border border-white/5 hover:bg-dark-700 transition-colors">Terminar</button>
                                 </header>
 
                                 <div className="p-4 pt-6">
@@ -1041,7 +1080,7 @@
 
                                 {/* Cronómetro Flotante */}
                                 {restTime > 0 && (
-                                    <div className="fixed bottom-16 left-1/2 transform -translate-x-1/2 bg-brand-500 text-white px-6 py-3 rounded-2xl font-black text-sm tracking-wider shadow-[0_0_25px_rgba(255,94,0,0.6)] flex items-center gap-3 z-50 animate-bounce cursor-pointer uppercase" onClick={() => setRestTime(0)}>
+                                    <div className="fixed bottom-16 left-1/2 transform -translate-x-1/2 bg-brand-500 text-white px-6 py-3 rounded-2xl font-black text-sm tracking-wider shadow-[0_0_25px_rgba(255,94,0,0.6)] flex items-center gap-3 z-50 animate-bounce cursor-pointer uppercase border border-white/20" onClick={() => setRestTime(0)}>
                                         <i className="fa-solid fa-stopwatch animate-pulse text-lg"></i>
                                         Descanso: {Math.floor(restTime/60)}:{(restTime%60).toString().padStart(2,'0')}
                                         <div className="ml-1 bg-black/20 hover:bg-black/40 transition-colors rounded-xl w-6 h-6 flex items-center justify-center text-xs"><i className="fa-solid fa-xmark"></i></div>
