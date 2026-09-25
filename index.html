@@ -6,10 +6,10 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="theme-color" content="#000000">
+    <meta name="theme-color" content="#0a0a0c">
     <title>Entrenamiento y Salud</title>
     
-    <link rel="manifest" href="data:application/manifest+json;charset=utf-8,%7B%22name%22%3A%22Entrenamiento%20y%20Salud%22%2C%22short_name%22%3A%22Training%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23000000%22%2C%22theme_color%22%3A%22%23000000%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22https%3A%2F%2Fcdn-icons-png.flaticon.com%2F512%2F2936%2F2936886.png%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fpng%22%7D%5D%7D">
+    <link rel="manifest" href="data:application/manifest+json;charset=utf-8,%7B%22name%22%3A%22Entrenamiento%20y%20Salud%22%2C%22short_name%22%3A%22Training%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230a0a0c%22%2C%22theme_color%22%3A%22%230a0a0c%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22https%3A%2F%2Fcdn-icons-png.flaticon.com%2F512%2F2936%2F2936886.png%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fpng%22%7D%5D%7D">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -29,20 +29,20 @@
             theme: {
                 extend: {
                     colors: {
-                        brand: { 500: '#A7C7E7', 600: '#8FB8DE' },
-                        dark: { 900: '#000000', 800: '#111111', 700: '#1c1c1e', 600: '#2c2c2e' }
+                        brand: { 500: '#FF5E00', 600: '#E05200', glow: 'rgba(255, 94, 0, 0.4)' },
+                        dark: { 950: '#050507', 900: '#0a0a0c', 800: '#141418', 700: '#1e1e24', 600: '#2c2c35' }
                     },
                     animation: {
-                        'toast-down': 'toastDown 0.3s ease-out forwards',
-                        'fade-in': 'fadeIn 0.2s ease-out forwards',
+                        'toast-down': 'toastDown 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+                        'fade-in': 'fadeIn 0.25s ease-out forwards',
                     },
                     keyframes: {
                         toastDown: {
-                            '0%': { transform: 'translate(-50%, -100%)', opacity: 0 },
+                            '0%': { transform: 'translate(-50%, -120%)', opacity: 0 },
                             '100%': { transform: 'translate(-50%, 0)', opacity: 1 },
                         },
                         fadeIn: {
-                            '0%': { opacity: 0, transform: 'translateY(-10px)' },
+                            '0%': { opacity: 0, transform: 'translateY(-6px)' },
                             '100%': { opacity: 1, transform: 'translateY(0)' },
                         }
                     }
@@ -51,11 +51,12 @@
         }
     </script>
     <style>
-        body { -webkit-tap-highlight-color: transparent; background-color: #000; color: #fff; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-        .app-container { max-width: 480px; margin: 0 auto; min-height: 100vh; background-color: #000; }
+        body { -webkit-tap-highlight-color: transparent; background-color: #050507; color: #f3f3f6; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        .app-container { max-width: 480px; margin: 0 auto; min-height: 100vh; background-color: #0a0a0c; border-left: 1px solid #1e1e24; border-right: 1px solid #1e1e24; box-shadow: 0 0 40px rgba(0,0,0,0.8); }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        .glass-panel { background: rgba(20, 20, 24, 0.75); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); }
     </style>
 </head>
 <body class="antialiased">
@@ -108,14 +109,39 @@
             } catch(e) { console.log("Audio falló", e); }
         };
 
+        // --- INPUT CONTROLADO PARA DÍAS Y BLOQUES ---
+        function EditableTitle({ initialValue, placeholder, className, onSave }) {
+            const [text, setText] = useState(initialValue);
+
+            useEffect(() => {
+                setText(initialValue);
+            }, [initialValue]);
+
+            return (
+                <input 
+                    type="text"
+                    className={className}
+                    value={text}
+                    placeholder={placeholder}
+                    onChange={(e) => setText(e.target.value)}
+                    onBlur={() => onSave(text)}
+                />
+            );
+        }
+
         // --- COMPONENTE: EDICIÓN DE EJERCICIO (PROFESOR) ---
         function ExerciseRow({ exercise, clientProgress, onUpdate, onDelete }) {
             const [localEx, setLocalEx] = useState(exercise);
             const [showSuggestions, setShowSuggestions] = useState(false);
             const [editWeek, setEditWeek] = useState(1); 
 
+            useEffect(() => {
+                setLocalEx(exercise);
+            }, [exercise]);
+
             const handleChange = (field, value) => {
-                setLocalEx(prev => ({ ...prev, [field]: value }));
+                const updated = { ...localEx, [field]: value };
+                setLocalEx(updated);
                 if(field === 'name') setShowSuggestions(true);
             };
 
@@ -134,7 +160,7 @@
                 setTimeout(() => {
                     setShowSuggestions(false);
                     onUpdate(localEx);
-                }, 200);
+                }, 250);
             };
 
             const selectSuggestion = (name) => {
@@ -162,11 +188,11 @@
             }
 
             return (
-                <div className="bg-dark-700 p-4 rounded-xl mb-4 border border-dark-600 relative z-10">
-                    <div className="flex justify-between items-start mb-2 relative">
+                <div className="glass-panel p-4 rounded-2xl mb-4 border border-dark-600 relative z-10 shadow-lg">
+                    <div className="flex justify-between items-start mb-3 relative">
                         <div className="w-5/6 relative">
                             <input 
-                                className="bg-transparent font-bold text-lg outline-none w-full text-white placeholder-gray-500" 
+                                className="bg-transparent font-bold text-lg outline-none w-full text-white placeholder-gray-500 tracking-wide" 
                                 value={localEx.name} 
                                 onChange={(e) => handleChange('name', e.target.value)} 
                                 onBlur={handleBlur} 
@@ -174,12 +200,15 @@
                                 placeholder="Nombre del ejercicio" 
                             />
                             {showSuggestions && localEx.name && suggestions.length > 0 && (
-                                <div className="absolute z-50 top-full left-0 w-full mt-1 bg-dark-800 border border-dark-600 rounded-lg shadow-xl overflow-hidden">
+                                <div className="absolute z-50 top-full left-0 w-full mt-1 bg-dark-800 border border-dark-600 rounded-xl shadow-2xl overflow-hidden backdrop-blur-md">
                                     {suggestions.map((sug, idx) => (
                                         <div 
                                             key={idx} 
-                                            onClick={() => selectSuggestion(sug)}
-                                            className="px-4 py-3 text-sm text-gray-300 hover:bg-brand-500 hover:text-black cursor-pointer border-b border-dark-700 last:border-0 transition-colors"
+                                            onMouseDown={(e) => {
+                                                e.preventDefault();
+                                                selectSuggestion(sug);
+                                            }}
+                                            className="px-4 py-3 text-sm text-gray-300 hover:bg-brand-500 hover:text-white cursor-pointer border-b border-dark-700 last:border-0 transition-colors"
                                         >
                                             {sug}
                                         </div>
@@ -187,19 +216,19 @@
                                 </div>
                             )}
                         </div>
-                        <button onClick={onDelete} className="text-gray-500 hover:text-red-500 transition-colors px-2 py-1"><i className="fa-solid fa-trash-can"></i></button>
+                        <button onClick={onDelete} className="text-gray-500 hover:text-red-400 transition-colors px-2 py-1"><i className="fa-solid fa-trash-can"></i></button>
                     </div>
 
-                    <div className="mb-3 pt-2">
-                        <div className="flex items-center justify-between mb-1.5">
-                            <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Programación por Semana:</span>
-                            <div className="flex bg-dark-800 rounded-lg p-0.5 border border-dark-600">
+                    <div className="mb-3 pt-1">
+                        <div className="flex items-center justify-between mb-2">
+                            <span className="text-[10px] font-black text-brand-500 uppercase tracking-widest">Programación Semanal:</span>
+                            <div className="flex bg-dark-900 rounded-lg p-0.5 border border-dark-600">
                                 {[1, 2, 3, 4].map(w => (
                                     <button 
                                         key={w} 
                                         type="button"
                                         onClick={() => setEditWeek(w)} 
-                                        className={`px-2.5 py-1 text-xs font-bold rounded-md transition-all ${editWeek === w ? 'bg-brand-500 text-black' : 'text-gray-400 hover:text-white'}`}
+                                        className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${editWeek === w ? 'bg-brand-500 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
                                     >
                                         S{w}
                                     </button>
@@ -207,37 +236,37 @@
                             </div>
                         </div>
 
-                        <div className="flex gap-4 text-sm text-gray-300 items-center bg-dark-800 p-2.5 rounded-xl border border-dark-600">
-                            <div className="flex items-center gap-1.5 flex-1">
-                                <span className="text-xs text-gray-400">Series S{editWeek}:</span>
-                                <input className="w-12 bg-dark-600 rounded p-1 text-center text-white font-bold outline-none focus:border focus:border-brand-500" value={currentWeekData.sets} onChange={(e) => handleWeekConfigChange(editWeek, 'sets', e.target.value)} onBlur={handleBlur} />
+                        <div className="flex gap-4 text-sm text-gray-300 items-center bg-dark-900/60 p-3 rounded-xl border border-dark-600">
+                            <div className="flex items-center gap-2 flex-1">
+                                <span className="text-xs text-gray-400">Series:</span>
+                                <input className="w-12 bg-dark-700 rounded-lg p-1.5 text-center text-white font-bold outline-none border border-dark-600 focus:border-brand-500" value={currentWeekData.sets} onChange={(e) => handleWeekConfigChange(editWeek, 'sets', e.target.value)} onBlur={handleBlur} />
                             </div>
-                            <div className="flex items-center gap-1.5 flex-1">
-                                <span className="text-xs text-gray-400">Reps S{editWeek}:</span>
-                                <input className="w-12 bg-dark-600 rounded p-1 text-center text-white font-bold outline-none focus:border focus:border-brand-500" value={currentWeekData.reps} onChange={(e) => handleWeekConfigChange(editWeek, 'reps', e.target.value)} onBlur={handleBlur} />
+                            <div className="flex items-center gap-2 flex-1">
+                                <span className="text-xs text-gray-400">Reps:</span>
+                                <input className="w-12 bg-dark-700 rounded-lg p-1.5 text-center text-white font-bold outline-none border border-dark-600 focus:border-brand-500" value={currentWeekData.reps} onChange={(e) => handleWeekConfigChange(editWeek, 'reps', e.target.value)} onBlur={handleBlur} />
                             </div>
                         </div>
                     </div>
 
-                    <div className="flex gap-4 text-sm text-gray-400 items-center overflow-x-auto hide-scrollbar pb-1">
-                        <div className="text-xs flex items-center gap-1">
-                            RIR <input className="w-8 bg-dark-600 rounded p-1 text-center text-white outline-none focus:border focus:border-brand-500" value={localEx.rir || '2'} onChange={(e) => handleChange('rir', e.target.value)} onBlur={handleBlur} />
+                    <div className="flex gap-4 text-sm text-gray-400 items-center py-1">
+                        <div className="text-xs flex items-center gap-1.5">
+                            RIR <input className="w-10 bg-dark-900 rounded-lg p-1.5 text-center text-white font-bold outline-none border border-dark-600 focus:border-brand-500" value={localEx.rir || '2'} onChange={(e) => handleChange('rir', e.target.value)} onBlur={handleBlur} />
                         </div>
-                        <div className="flex items-center gap-1">
-                            <i className="fa-regular fa-clock"></i> <input className="w-12 bg-dark-600 rounded p-1 text-center text-white outline-none focus:border focus:border-brand-500" value={localEx.rest || '90s'} onChange={(e) => handleChange('rest', e.target.value)} onBlur={handleBlur} placeholder="90s" />
+                        <div className="flex items-center gap-1.5">
+                            <i className="fa-regular fa-clock text-brand-500"></i> <input className="w-14 bg-dark-900 rounded-lg p-1.5 text-center text-white font-bold outline-none border border-dark-600 focus:border-brand-500 text-xs" value={localEx.rest || '90s'} onChange={(e) => handleChange('rest', e.target.value)} onBlur={handleBlur} placeholder="90s" />
                         </div>
                     </div>
                     
-                    <div className="mt-4 pt-3 border-t border-dark-600 flex items-center gap-2 mb-2">
+                    <div className="mt-3 pt-3 border-t border-dark-600 flex items-center gap-2.5">
                         <input type="checkbox" id={`uni-${localEx.id}`} checked={localEx.isUnilateral || false} onChange={(e) => {handleChange('isUnilateral', e.target.checked); handleBlur();}} className="w-4 h-4 accent-brand-500 rounded cursor-pointer" />
-                        <label htmlFor={`uni-${localEx.id}`} className="text-xs text-gray-400 cursor-pointer select-none">Ejercicio Unilateral (Separar Izq/Der)</label>
+                        <label htmlFor={`uni-${localEx.id}`} className="text-xs text-gray-300 cursor-pointer select-none font-medium">Ejercicio Unilateral (Separar Izq/Der)</label>
                     </div>
 
                     <div className="mt-3">
                         <textarea 
-                            className="w-full bg-dark-800 text-gray-300 p-2.5 rounded-lg outline-none border border-dark-600 focus:border-brand-500 text-base resize-none box-border"
+                            className="w-full bg-dark-900/80 text-gray-200 p-3 rounded-xl outline-none border border-dark-600 focus:border-brand-500 text-sm resize-none box-border"
                             rows="2"
-                            placeholder="Aclaraciones para el alumno (ej: bajar lento, pausa de 2 seg)..."
+                            placeholder="Aclaraciones técnicas (ej: pausa de 2 seg en excéntrica)..."
                             value={localEx.coachNote || ''}
                             onChange={(e) => handleChange('coachNote', e.target.value)}
                             onBlur={handleBlur}
@@ -245,10 +274,10 @@
                     </div>
 
                     {exerciseNotes.length > 0 && (
-                        <div className="mt-3 bg-dark-800/80 p-3 rounded-lg border border-brand-500/30">
-                            <span className="text-brand-500 text-xs font-bold flex items-center gap-2 mb-2"><i className="fa-solid fa-comment-dots"></i> Notas del alumno:</span>
+                        <div className="mt-3 bg-brand-500/10 p-3 rounded-xl border border-brand-500/30">
+                            <span className="text-brand-500 text-xs font-bold flex items-center gap-2 mb-2"><i className="fa-solid fa-comment-dots"></i> Feedback del alumno:</span>
                             {exerciseNotes.map(en => (
-                                <div key={en.week} className="text-xs text-gray-300 mb-1.5 last:mb-0"><strong className="text-gray-500">Semana {en.week}:</strong> {en.note}</div>
+                                <div key={en.week} className="text-xs text-gray-300 mb-1 last:mb-0"><strong className="text-brand-500">Semana {en.week}:</strong> {en.note}</div>
                             ))}
                         </div>
                     )}
@@ -335,30 +364,30 @@
             return (
                 <div className="mb-10">
                     <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 bg-dark-700 rounded-lg flex items-center justify-center text-brand-500 shadow-sm border border-dark-600">
-                                <i className="fa-solid fa-dumbbell text-xl"></i>
+                        <div className="flex items-center gap-3">
+                            <div className="w-11 h-11 bg-dark-700 rounded-xl flex items-center justify-center text-brand-500 shadow-lg border border-dark-600">
+                                <i className="fa-solid fa-dumbbell text-lg"></i>
                             </div>
                             <div>
-                                <h4 className="font-bold text-lg text-white leading-tight">{exercise.name}</h4>
-                                <span className="text-xs text-brand-500 font-semibold">Semana {activeWeek}: {weekConfig.sets} series x {weekConfig.reps} reps (RIR objetivo: {exercise.rir || '2'})</span>
+                                <h4 className="font-bold text-base text-white leading-tight tracking-wide">{exercise.name}</h4>
+                                <span className="text-xs text-brand-500 font-semibold">Sem. {activeWeek} • Pauta: {weekConfig.sets}x{weekConfig.reps} (RIR {exercise.rir || '2'})</span>
                             </div>
                         </div>
                     </div>
 
                     {exercise.coachNote && (
-                        <div className="bg-dark-800 border-l-4 border-brand-500 p-3 rounded-r-xl mb-4 flex gap-3 items-start shadow-sm">
+                        <div className="bg-dark-800 border-l-4 border-brand-500 p-3 rounded-r-xl mb-4 flex gap-3 items-start shadow-inner">
                             <i className="fa-solid fa-circle-info text-brand-500 mt-0.5"></i>
-                            <p className="text-sm text-gray-300 whitespace-pre-wrap">{exercise.coachNote}</p>
+                            <p className="text-xs text-gray-300 whitespace-pre-wrap leading-relaxed">{exercise.coachNote}</p>
                         </div>
                     )}
 
-                    <div className="flex gap-2 mb-4 overflow-x-auto hide-scrollbar">
-                        <button onClick={() => {setShowHistory(!showHistory); setShowNotes(false);}} className={`text-sm font-bold px-4 py-2 rounded-full flex items-center gap-2 transition-colors border ${showHistory ? 'bg-brand-500 text-black border-brand-500' : 'bg-dark-700 text-white border-dark-600 hover:bg-dark-600'}`}>
+                    <div className="flex gap-2 mb-4">
+                        <button onClick={() => {setShowHistory(!showHistory); setShowNotes(false);}} className={`text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-2 transition-all border ${showHistory ? 'bg-brand-500 text-white border-brand-500 shadow-md shadow-brand-500/20' : 'bg-dark-800 text-gray-300 border-dark-600 hover:bg-dark-700'}`}>
                             <i className="fa-solid fa-clock-rotate-left"></i> Historial
                         </button>
-                        <button onClick={() => {setShowNotes(!showNotes); setShowHistory(false);}} className={`text-sm font-bold px-4 py-2 rounded-full flex items-center gap-2 transition-colors border ${showNotes ? 'bg-brand-500 text-black border-brand-500' : 'bg-dark-700 text-white border-dark-600 hover:bg-dark-600'}`}>
-                            <i className="fa-solid fa-pencil"></i> Notas
+                        <button onClick={() => {setShowNotes(!showNotes); setShowHistory(false);}} className={`text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-2 transition-all border ${showNotes ? 'bg-brand-500 text-white border-brand-500 shadow-md shadow-brand-500/20' : 'bg-dark-800 text-gray-300 border-dark-600 hover:bg-dark-700'}`}>
+                            <i className="fa-solid fa-pencil"></i> Notas personales
                         </button>
                     </div>
 
@@ -368,15 +397,15 @@
                                 value={localNote} 
                                 onChange={handleNoteChange} 
                                 onBlur={handleNoteBlur}
-                                placeholder="Anotá acá configuraciones de la máquina, sensaciones, etc..." 
-                                className="w-full bg-dark-800 text-white p-3 rounded-xl outline-none border border-dark-600 focus:border-brand-500 text-base resize-none h-24 shadow-inner box-border block"
+                                placeholder="Anotá acá sensaciones, carga de máquina, etc..." 
+                                className="w-full bg-dark-800 text-white p-3 rounded-xl outline-none border border-dark-600 focus:border-brand-500 text-sm resize-none h-24 shadow-inner box-border block"
                             />
                         </div>
                     )}
 
                     {showHistory && (
-                        <div className="mb-4 bg-dark-800 p-4 rounded-xl border border-dark-600 animate-fade-in origin-top shadow-inner text-sm">
-                            <h5 className="font-bold text-white mb-3 flex items-center gap-2"><i className="fa-solid fa-chart-simple text-brand-500"></i> Progreso en este mesociclo</h5>
+                        <div className="mb-4 bg-dark-800 p-4 rounded-xl border border-dark-600 animate-fade-in origin-top shadow-inner text-xs">
+                            <h5 className="font-bold text-white mb-3 flex items-center gap-2"><i className="fa-solid fa-chart-simple text-brand-500"></i> Tus marcas este mesociclo</h5>
                             {[1, 2, 3, 4].map(w => {
                                 const wData = allWeeksData?.[w]?.[exercise.id]?.sets;
                                 if (!wData || wData.length === 0) return null;
@@ -386,7 +415,7 @@
                                         <div className="flex flex-wrap gap-2">
                                             {wData.map((s, idx) => {
                                                 if(s.weight && s.reps) return (
-                                                    <span key={idx} className="bg-dark-700 px-2 py-1 rounded text-xs border border-dark-600">{s.weight}kg x {s.reps} {s.rir !== undefined && s.rir !== '' ? `(RIR ${s.rir})` : ''}</span>
+                                                    <span key={idx} className="bg-dark-700 px-2.5 py-1 rounded-lg text-xs border border-dark-600">{s.weight}kg x {s.reps} {s.rir !== undefined && s.rir !== '' ? `(RIR ${s.rir})` : ''}</span>
                                                 );
                                                 return null;
                                             })}
@@ -394,12 +423,11 @@
                                     </div>
                                 )
                             })}
-                            {!allWeeksData && <p className="text-gray-500 text-xs italic">Aún no hay registros en otras semanas.</p>}
+                            {!allWeeksData && <p className="text-gray-500 italic">Aún no hay registros en otras semanas.</p>}
                         </div>
                     )}
                     
-                    {/* Tabla de Sets con Autoregulación (RIR Real) */}
-                    <div className="grid grid-cols-[32px_55px_1fr_1fr_45px_40px] gap-1.5 mb-2 text-[10px] text-gray-500 font-bold uppercase tracking-widest px-1 text-center">
+                    <div className="grid grid-cols-[36px_55px_1fr_1fr_45px_42px] gap-1.5 mb-2 text-[10px] text-gray-400 font-black uppercase tracking-widest px-1 text-center">
                         <span>Set</span>
                         <span>Previa</span>
                         <span>KG</span>
@@ -421,24 +449,25 @@
                             badgeText = `${badgeText}${isRight ? 'D' : 'I'}`;
                         }
 
-                        let badgeStyle = "bg-dark-700 text-gray-400 border-dark-600";
-                        if (setType === 'W') badgeStyle = "bg-orange-900/40 text-orange-500 border-orange-800";
-                        else if (setType === 'D') badgeStyle = "bg-red-900/40 text-red-500 border-red-800";
-                        else if (isUni) badgeStyle = isRight ? "bg-blue-900/30 text-blue-400 border-blue-900" : "bg-green-900/30 text-green-400 border-green-900";
+                        let badgeStyle = "bg-dark-800 text-gray-400 border-dark-600";
+                        if (setType === 'W') badgeStyle = "bg-orange-950/60 text-orange-400 border-orange-800";
+                        else if (setType === 'D') badgeStyle = "bg-red-950/60 text-red-400 border-red-800";
+                        else if (isUni) badgeStyle = isRight ? "bg-blue-950/60 text-blue-400 border-blue-900" : "bg-emerald-950/60 text-emerald-400 border-emerald-900";
 
                         return (
-                            <div key={i} className="grid grid-cols-[32px_55px_1fr_1fr_45px_40px] gap-1.5 items-center mb-2">
-                                <button onClick={() => cycleSetType(i)} className={`w-8 h-8 flex items-center justify-center rounded-lg font-bold text-xs border cursor-pointer hover:opacity-80 transition-opacity ${badgeStyle}`}>
+                            <div key={i} className="grid grid-cols-[36px_55px_1fr_1fr_45px_42px] gap-1.5 items-center mb-2">
+                                <button onClick={() => cycleSetType(i)} className={`w-9 h-10 flex items-center justify-center rounded-xl font-black text-xs border cursor-pointer hover:opacity-80 transition-opacity ${badgeStyle}`}>
                                     {badgeText}
                                 </button>
                                 
-                                <div className="text-center text-gray-500 text-xs font-medium truncate">
+                                <div className="text-center text-gray-500 text-xs font-semibold truncate">
                                     {prevText}
                                 </div>
 
                                 <input 
-                                    type="number" 
-                                    className="w-full bg-dark-700 rounded-lg py-2.5 text-white outline-none text-center font-bold text-sm border border-dark-600 focus:border-brand-500 transition-colors box-border" 
+                                    type="text" 
+                                    inputMode="decimal"
+                                    className="w-full bg-dark-800 rounded-xl py-2.5 text-white outline-none text-center font-bold text-sm border border-dark-600 focus:border-brand-500 transition-colors box-border shadow-inner" 
                                     placeholder="-" 
                                     value={set.weight} 
                                     onChange={(e) => updateSetLocal(i, 'weight', e.target.value)} 
@@ -447,7 +476,7 @@
                                 
                                 <input 
                                     type="number" 
-                                    className="w-full bg-dark-700 rounded-lg py-2.5 text-white outline-none text-center font-bold text-sm border border-dark-600 focus:border-brand-500 transition-colors box-border" 
+                                    className="w-full bg-dark-800 rounded-xl py-2.5 text-white outline-none text-center font-bold text-sm border border-dark-600 focus:border-brand-500 transition-colors box-border shadow-inner" 
                                     placeholder="-" 
                                     value={set.reps} 
                                     onChange={(e) => updateSetLocal(i, 'reps', e.target.value)} 
@@ -456,20 +485,20 @@
 
                                 <input 
                                     type="number" 
-                                    className="w-full bg-dark-700 rounded-lg py-2.5 text-brand-500 outline-none text-center font-bold text-sm border border-dark-600 focus:border-brand-500 transition-colors box-border" 
+                                    className="w-full bg-dark-800 rounded-xl py-2.5 text-brand-500 outline-none text-center font-bold text-sm border border-dark-600 focus:border-brand-500 transition-colors box-border shadow-inner" 
                                     placeholder="RIR" 
                                     value={set.rir} 
                                     onChange={(e) => updateSetLocal(i, 'rir', e.target.value)} 
                                     onBlur={handleSetBlur}
                                 />
                                 
-                                <button onClick={() => toggleDone(i)} className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all box-border ${set.done ? 'bg-brand-500 text-black shadow-[0_0_12px_rgba(167,199,231,0.4)]' : 'bg-dark-700 text-gray-500 border border-dark-600 hover:text-white'}`}>
+                                <button onClick={() => toggleDone(i)} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all box-border ${set.done ? 'bg-brand-500 text-white shadow-[0_0_15px_rgba(255,94,0,0.5)] font-bold scale-105' : 'bg-dark-800 text-gray-500 border border-dark-600 hover:text-white'}`}>
                                     <i className="fa-solid fa-check"></i>
                                 </button>
                             </div>
                         )
                     })}
-                    <button onClick={addSet} className="w-full mt-4 bg-dark-700 text-brand-500 font-bold py-3 rounded-xl text-sm border border-dark-600 hover:bg-dark-600 transition-colors box-border">
+                    <button onClick={addSet} className="w-full mt-4 bg-dark-800 text-brand-500 font-bold py-3.5 rounded-xl text-xs uppercase tracking-wider border border-dark-600 hover:bg-dark-700 transition-colors box-border shadow-md">
                         + Añadir serie {isUni ? 'I/D' : ''}
                     </button>
                 </div>
@@ -610,6 +639,13 @@
                 saveData(newData);
             };
 
+            const updateDayName = (clientId, dayId, newName) => {
+                const newData = JSON.parse(JSON.stringify(globalData));
+                const day = newData.routines[clientId].find(d => d.id === dayId);
+                if(day) day.name = newName;
+                saveData(newData);
+            };
+
             const deleteDay = (clientId, dayId) => {
                 const confirmacion = window.confirm('¿Seguro que querés borrar esta plantilla entera?');
                 if (!confirmacion) return;
@@ -706,30 +742,30 @@
                 saveData(newData);
             };
 
-            if (loading) return <div className="app-container flex justify-center items-center h-screen bg-black text-brand-500 text-2xl font-bold"><i className="fa-solid fa-spinner fa-spin mr-3"></i> Cargando...</div>;
+            if (loading) return <div className="app-container flex justify-center items-center h-screen bg-dark-900 text-brand-500 text-2xl font-bold"><i className="fa-solid fa-fire fa-spin mr-3"></i> Cargando...</div>;
 
             return (
                 <div className="relative">
                     {toast && (
-                        <div className={`fixed top-6 left-1/2 transform -translate-x-1/2 z-50 px-6 py-3 rounded-full text-sm font-bold shadow-2xl animate-toast-down text-center flex items-center gap-3 whitespace-nowrap ${toast.type === 'error' ? 'bg-red-600 text-white' : 'bg-brand-500 text-black'}`}>
-                            {toast.type === 'error' ? <i className="fa-solid fa-triangle-exclamation"></i> : <i className="fa-solid fa-bell"></i>}
+                        <div className={`fixed top-6 left-1/2 transform -translate-x-1/2 z-50 px-6 py-3 rounded-2xl text-sm font-bold shadow-2xl animate-toast-down text-center flex items-center gap-3 whitespace-nowrap ${toast.type === 'error' ? 'bg-red-600 text-white' : 'bg-brand-500 text-white shadow-brand-500/40'}`}>
+                            {toast.type === 'error' ? <i className="fa-solid fa-triangle-exclamation"></i> : <i className="fa-solid fa-bolt"></i>}
                             {toast.msg}
                         </div>
                     )}
 
                     {view === 'home' && (
-                        <div className="app-container flex flex-col justify-center p-6 space-y-8 bg-black h-screen">
-                            <div className="text-center animate-fade-in">
-                                <div className="flex justify-center items-center gap-4 text-6xl text-brand-500 mb-6 drop-shadow-[0_0_15px_rgba(167,199,231,0.5)]">
-                                    <i className="fa-solid fa-brain"></i>
-                                    <i className="fa-solid fa-hand-fist"></i>
+                        <div className="app-container flex flex-col justify-between p-6 bg-dark-900 h-screen">
+                            <div></div>
+                            <div className="text-center animate-fade-in my-auto">
+                                <div className="inline-flex justify-center items-center w-24 h-24 bg-dark-800 rounded-3xl border border-brand-500/30 text-brand-500 mb-6 shadow-[0_0_30px_rgba(255,94,0,0.2)]">
+                                    <i className="fa-solid fa-fire text-4xl"></i>
                                 </div>
-                                <h1 className="text-4xl font-black text-white uppercase tracking-widest mb-1">Entrenamiento</h1>
-                                <h2 className="text-2xl font-bold text-brand-500 lowercase">y salud</h2>
+                                <h1 className="text-3xl font-black text-white uppercase tracking-wider mb-1">Entrenamiento</h1>
+                                <h2 className="text-lg font-bold text-brand-500 tracking-widest uppercase">y salud</h2>
                             </div>
-                            <div className="bg-dark-700 p-6 rounded-3xl border border-dark-600 shadow-2xl">
-                                <input type="password" placeholder="PIN" className="w-full bg-dark-800 p-4 rounded-xl text-center text-2xl tracking-[0.5em] outline-none mb-4 text-white border border-dark-600 focus:border-brand-500 transition-colors" value={pinInput} onChange={(e) => setPinInput(e.target.value)} />
-                                <button onClick={handleLogin} className="w-full bg-brand-500 text-black py-4 rounded-xl font-bold text-lg hover:bg-brand-600 transition-colors shadow-lg shadow-brand-500/20">Entrar</button>
+                            <div className="glass-panel p-6 rounded-3xl shadow-2xl mb-4">
+                                <input type="password" placeholder="INGRESA TU PIN" className="w-full bg-dark-900 p-4 rounded-2xl text-center text-xl tracking-[0.4em] outline-none mb-4 text-white border border-dark-600 focus:border-brand-500 transition-colors font-bold placeholder:tracking-normal placeholder:font-normal placeholder:text-gray-500" value={pinInput} onChange={(e) => setPinInput(e.target.value)} />
+                                <button onClick={handleLogin} className="w-full bg-brand-500 text-white py-4 rounded-2xl font-black text-base hover:bg-brand-600 transition-all shadow-lg shadow-brand-500/30 uppercase tracking-wider">Entrar</button>
                             </div>
                         </div>
                     )}
@@ -739,19 +775,19 @@
                             {activeClient ? (
                                 activeDayId && globalData.routines[activeClient.id]?.find(d => d.id === activeDayId) ? (
                                     <>
-                                        <header className="p-4 flex items-center justify-between sticky top-0 bg-black/90 backdrop-blur z-50 border-b border-dark-700">
-                                            <button onClick={() => setActiveDayId(null)} className="text-brand-500 w-10 h-10 flex items-center justify-center hover:text-white transition-colors"><i className="fa-solid fa-arrow-left text-xl"></i></button>
-                                            <h2 className="font-bold text-lg text-white">Editar Plantilla</h2>
+                                        <header className="p-4 flex items-center justify-between sticky top-0 bg-dark-900/90 backdrop-blur z-50 border-b border-dark-700">
+                                            <button onClick={() => setActiveDayId(null)} className="text-brand-500 w-10 h-10 flex items-center justify-center hover:text-white transition-colors bg-dark-800 rounded-xl"><i className="fa-solid fa-arrow-left text-base"></i></button>
+                                            <h2 className="font-bold text-base text-white tracking-wide">Editar Plantilla</h2>
                                             <div className="w-10"></div>
                                         </header>
                                         <div className="p-4">
-                                            <input className="font-black text-3xl lowercase bg-transparent outline-none text-white w-full mb-6 border-b border-transparent focus:border-brand-500 transition-colors placeholder-gray-600" value={globalData.routines[activeClient.id].find(d => d.id === activeDayId).name} placeholder="Nombre del día..." onChange={(e) => {
-                                                const newData = JSON.parse(JSON.stringify(globalData));
-                                                newData.routines[activeClient.id].find(d => d.id === activeDayId).name = e.target.value;
-                                                saveData(newData);
-                                            }}/>
+                                            <EditableTitle 
+                                                initialValue={globalData.routines[activeClient.id].find(d => d.id === activeDayId).name}
+                                                placeholder="Nombre del día..."
+                                                className="font-black text-2xl lowercase bg-transparent outline-none text-white w-full mb-6 border-b border-dark-700 pb-2 focus:border-brand-500 transition-colors placeholder-gray-600"
+                                                onSave={(val) => updateDayName(activeClient.id, activeDayId, val)}
+                                            />
                                             
-                                            {/* Normalización para soportar secciones / bloques */}
                                             {(() => {
                                                 const day = globalData.routines[activeClient.id].find(d => d.id === activeDayId);
                                                 const sections = day.sections || [{ id: 'default', name: 'Bloque Principal', exercises: day.exercises || [] }];
@@ -759,16 +795,16 @@
                                                 return (
                                                     <div className="space-y-6">
                                                         {sections.map((sec, secIdx) => (
-                                                            <div key={sec.id || secIdx} className="bg-dark-800 p-4 rounded-2xl border border-dark-600">
+                                                            <div key={sec.id || secIdx} className="bg-dark-800 p-4 rounded-3xl border border-dark-600 shadow-xl">
                                                                 <div className="flex items-center justify-between mb-4 pb-2 border-b border-dark-700">
-                                                                    <input 
-                                                                        className="bg-transparent font-bold text-brand-500 text-base outline-none w-3/4 placeholder-gray-500" 
-                                                                        value={sec.name} 
-                                                                        placeholder="Nombre del bloque (ej: Movilidad)..."
-                                                                        onChange={(e) => updateSectionName(activeClient.id, activeDayId, sec.id, e.target.value)}
+                                                                    <EditableTitle 
+                                                                        initialValue={sec.name}
+                                                                        placeholder="NOMBRE DEL BLOQUE..."
+                                                                        className="bg-transparent font-black text-brand-500 text-sm uppercase tracking-wider outline-none w-3/4 placeholder-gray-500"
+                                                                        onSave={(val) => updateSectionName(activeClient.id, activeDayId, sec.id, val)}
                                                                     />
                                                                     {sections.length > 1 && (
-                                                                        <button onClick={() => deleteSection(activeClient.id, activeDayId, sec.id)} className="text-gray-500 hover:text-red-500 transition-colors text-xs px-2 py-1"><i className="fa-solid fa-trash-can"></i> Borrar Bloque</button>
+                                                                        <button onClick={() => deleteSection(activeClient.id, activeDayId, sec.id)} className="text-gray-500 hover:text-red-400 transition-colors text-xs px-2 py-1"><i className="fa-solid fa-trash-can"></i></button>
                                                                     )}
                                                                 </div>
 
@@ -782,14 +818,14 @@
                                                                     />
                                                                 ))}
 
-                                                                <button onClick={() => addExerciseToSection(activeClient.id, activeDayId, sec.id)} className="w-full bg-dark-700 text-brand-500 font-bold py-3 rounded-xl mt-2 text-sm border border-dark-600 hover:bg-dark-600 transition-colors">
-                                                                    <i className="fa-solid fa-plus mr-2"></i> Agregar ejercicio a este bloque
+                                                                <button onClick={() => addExerciseToSection(activeClient.id, activeDayId, sec.id)} className="w-full bg-dark-700 text-brand-500 font-bold py-3 rounded-2xl mt-2 text-xs uppercase tracking-wider border border-dark-600 hover:bg-dark-600 transition-colors shadow-sm">
+                                                                    <i className="fa-solid fa-plus mr-1.5"></i> Agregar ejercicio
                                                                 </button>
                                                             </div>
                                                         ))}
 
-                                                        <button onClick={() => addSection(activeClient.id, activeDayId)} className="w-full bg-brand-500 text-black font-bold py-4 rounded-xl mt-4 hover:bg-brand-600 transition-colors shadow-lg shadow-brand-500/20">
-                                                            <i className="fa-solid fa-layer-group mr-2"></i> Añadir nuevo bloque o sección
+                                                        <button onClick={() => addSection(activeClient.id, activeDayId)} className="w-full bg-dark-800 text-white font-bold py-4 rounded-2xl mt-4 border border-dark-600 hover:bg-dark-700 transition-colors shadow-lg flex items-center justify-center gap-2 text-sm uppercase tracking-wide">
+                                                            <i className="fa-solid fa-layer-group text-brand-500"></i> Nuevo bloque
                                                         </button>
                                                     </div>
                                                 );
@@ -798,59 +834,60 @@
                                     </>
                                 ) : (
                                     <>
-                                        <header className="p-4 flex items-center justify-between sticky top-0 bg-black/90 backdrop-blur z-10 border-b border-dark-700">
-                                            <button onClick={() => setActiveClient(null)} className="text-brand-500 w-10 h-10 flex items-center justify-center hover:text-white transition-colors"><i className="fa-solid fa-arrow-left text-xl"></i></button>
-                                            <h2 className="font-bold text-lg text-white">{activeClient.name}</h2>
+                                        <header className="p-4 flex items-center justify-between sticky top-0 bg-dark-900/90 backdrop-blur z-10 border-b border-dark-700">
+                                            <button onClick={() => setActiveClient(null)} className="text-brand-500 w-10 h-10 flex items-center justify-center hover:text-white transition-colors bg-dark-800 rounded-xl"><i className="fa-solid fa-arrow-left text-base"></i></button>
+                                            <h2 className="font-bold text-base text-white tracking-wide">{activeClient.name}</h2>
                                             <div className="w-10"></div>
                                         </header>
                                         
                                         <div className="p-4">
-                                            <h3 className="font-bold text-xl mb-4 text-white">Tus plantillas</h3>
+                                            <h3 className="font-black text-xs text-gray-400 uppercase tracking-widest mb-4">Plantillas asignadas</h3>
                                             <div className="space-y-4">
                                                 {(globalData.routines[activeClient.id] || []).map(day => {
                                                     const totalEx = day.sections ? day.sections.reduce((acc, s) => acc + (s.exercises?.length || 0), 0) : (day.exercises?.length || 0);
                                                     return (
-                                                        <div key={day.id} onClick={() => setActiveDayId(day.id)} className="flex items-center gap-4 cursor-pointer bg-dark-700 p-3 rounded-2xl border border-dark-600 hover:border-brand-500 transition-colors">
-                                                            <div className="w-16 h-16 bg-white rounded-lg shrink-0 flex items-center justify-center text-black">
-                                                                <i className="fa-solid fa-file-lines text-2xl"></i>
+                                                        <div key={day.id} onClick={() => setActiveDayId(day.id)} className="glass-panel p-4 rounded-2xl flex items-center gap-4 cursor-pointer hover:border-brand-500/50 transition-all shadow-md group">
+                                                            <div className="w-14 h-14 bg-dark-800 rounded-xl shrink-0 flex items-center justify-center text-brand-500 border border-dark-600 group-hover:scale-105 transition-transform">
+                                                                <i className="fa-solid fa-dumbbell text-xl"></i>
                                                             </div>
                                                             <div className="flex-1 overflow-hidden">
-                                                                <h4 className="font-bold text-lg text-white truncate lowercase">{day.name}</h4>
-                                                                <p className="text-sm text-gray-500 truncate">{totalEx} ejercicios programados</p>
+                                                                <h4 className="font-bold text-base text-white truncate lowercase">{day.name}</h4>
+                                                                <p className="text-xs text-gray-400 truncate mt-0.5">{totalEx} ejercicios programados</p>
                                                             </div>
                                                             <div className="flex items-center gap-1">
-                                                                <button onClick={(e) => { e.stopPropagation(); cloneDay(activeClient.id, day.id); }} className="text-gray-400 px-3 py-2 hover:text-brand-500 transition-colors"><i className="fa-solid fa-copy"></i></button>
-                                                                <button onClick={(e) => { e.stopPropagation(); deleteDay(activeClient.id, day.id); }} className="text-gray-400 px-3 py-2 hover:text-red-500 transition-colors"><i className="fa-solid fa-trash-can"></i></button>
+                                                                <button onClick={(e) => { e.stopPropagation(); cloneDay(activeClient.id, day.id); }} className="text-gray-400 p-2.5 hover:text-brand-500 transition-colors"><i className="fa-solid fa-copy"></i></button>
+                                                                <button onClick={(e) => { e.stopPropagation(); deleteDay(activeClient.id, day.id); }} className="text-gray-400 p-2.5 hover:text-red-400 transition-colors"><i className="fa-solid fa-trash-can"></i></button>
                                                             </div>
                                                         </div>
                                                     );
                                                 })}
                                             </div>
-                                            <button onClick={() => addDay(activeClient.id)} className="mt-6 flex items-center justify-center gap-3 text-black font-bold w-full bg-brand-500 p-4 rounded-xl hover:bg-brand-600 transition-colors shadow-lg shadow-brand-500/20">
-                                                <i className="fa-regular fa-folder text-xl"></i> Crear nueva plantilla
+                                            <button onClick={() => addDay(activeClient.id)} className="mt-6 flex items-center justify-center gap-2 text-white font-black w-full bg-brand-500 p-4 rounded-2xl hover:bg-brand-600 transition-colors shadow-lg shadow-brand-500/30 uppercase text-xs tracking-wider">
+                                                <i className="fa-regular fa-folder text-base"></i> Crear nueva plantilla
                                             </button>
                                         </div>
                                     </>
                                 )
                             ) : (
                                 <>
-                                    <header className="p-5 flex justify-between items-center bg-black sticky top-0 border-b border-dark-700 z-10">
-                                        <h2 className="font-black text-2xl text-white">Alumnos</h2>
-                                        <button onClick={() => setView('home')} className="text-brand-500 hover:text-white transition-colors flex items-center gap-2 font-bold"><i className="fa-solid fa-arrow-right-from-bracket"></i> Salir</button>
+                                    <header className="p-5 flex justify-between items-center bg-dark-900 sticky top-0 border-b border-dark-700 z-10">
+                                        <h2 className="font-black text-xl text-white uppercase tracking-wider">Panel Profe</h2>
+                                        <button onClick={() => setView('home')} className="text-xs font-bold text-gray-400 bg-dark-800 px-4 py-2 rounded-xl hover:text-white transition-colors">Salir</button>
                                     </header>
-                                    <div className="p-5 space-y-3">
+                                    <div className="p-5 space-y-4">
                                         <div className="flex gap-2 bg-dark-800 p-2 rounded-2xl border border-dark-600 shadow-inner mb-6">
-                                            <input className="flex-1 bg-transparent px-4 outline-none text-sm text-white focus:placeholder-gray-600" placeholder="Nombre del alumno nuevo..." value={newClientName} onChange={(e) => setNewClientName(e.target.value)} />
-                                            <button onClick={addClient} className="bg-brand-500 rounded-xl w-10 h-10 flex items-center justify-center text-black hover:bg-brand-600 transition-colors shadow-md shadow-brand-500/30"><i className="fa-solid fa-plus"></i></button>
+                                            <input className="flex-1 bg-transparent px-4 outline-none text-sm text-white placeholder-gray-500 font-medium" placeholder="Nuevo alumno..." value={newClientName} onChange={(e) => setNewClientName(e.target.value)} />
+                                            <button onClick={addClient} className="bg-brand-500 rounded-xl w-11 h-11 flex items-center justify-center text-white hover:bg-brand-600 transition-colors shadow-md shadow-brand-500/30 font-bold"><i className="fa-solid fa-plus"></i></button>
                                         </div>
 
+                                        <h3 className="font-black text-xs text-gray-400 uppercase tracking-widest mb-2">Listado de Alumnos</h3>
                                         {globalData.clients?.map(client => (
-                                            <div key={client.id} onClick={() => setActiveClient(client)} className="bg-dark-700 p-5 rounded-2xl flex justify-between items-center cursor-pointer border border-dark-600 hover:border-brand-500 transition-all">
+                                            <div key={client.id} onClick={() => setActiveClient(client)} className="glass-panel p-4 rounded-2xl flex justify-between items-center cursor-pointer hover:border-brand-500/50 transition-all shadow-md">
                                                 <div>
-                                                    <p className="font-bold text-lg text-white">{client.name}</p>
-                                                    <p className="text-xs text-brand-500 mt-1"><i className="fa-solid fa-key mr-1"></i> PIN: {client.pin}</p>
+                                                    <p className="font-bold text-base text-white">{client.name}</p>
+                                                    <p className="text-xs text-brand-500 mt-1 font-semibold"><i className="fa-solid fa-key mr-1"></i> PIN: {client.pin}</p>
                                                 </div>
-                                                <i className="fa-solid fa-chevron-right text-gray-500"></i>
+                                                <i className="fa-solid fa-chevron-right text-gray-500 text-sm"></i>
                                             </div>
                                         ))}
                                     </div>
@@ -860,51 +897,49 @@
                     )}
 
                     {view === 'cliente_listado' && (
-                        <div className="app-container pb-20">
-                            <header className="p-5 flex justify-between items-center sticky top-0 bg-black/90 backdrop-blur z-10 border-b border-dark-700">
-                                <h1 className="text-lg font-black text-white tracking-widest flex items-center gap-2">
-                                    <i className="fa-solid fa-brain text-brand-500 text-xl"></i>
-                                    <i className="fa-solid fa-hand-fist text-brand-500 text-xl"></i>
-                                    <span className="flex flex-col ml-1">
-                                        <span className="text-sm leading-none uppercase">Entrenamiento</span>
-                                        <span className="text-[10px] leading-none text-brand-500 mt-1 uppercase">y salud</span>
-                                    </span>
+                        <div className="app-container pb-24">
+                            <header className="p-5 flex justify-between items-center sticky top-0 bg-dark-900/90 backdrop-blur z-10 border-b border-dark-700">
+                                <h1 className="text-sm font-black text-white tracking-widest flex items-center gap-2">
+                                    <div className="w-7 h-7 bg-brand-500 rounded-lg flex items-center justify-center text-white text-xs shadow-md shadow-brand-500/40">
+                                        <i className="fa-solid fa-fire"></i>
+                                    </div>
+                                    <span className="uppercase tracking-wider">Entrenamiento & Salud</span>
                                 </h1>
-                                <button onClick={() => setView('home')} className="text-black bg-white px-4 py-1.5 rounded-full text-xs font-bold shadow-md">Salir</button>
+                                <button onClick={() => setView('home')} className="text-white bg-dark-800 px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-sm border border-dark-600">Salir</button>
                             </header>
 
                             <div className="p-5">
-                                <h3 className="font-bold text-xl mb-4 text-white">Mesociclo actual</h3>
-                                <div className="flex bg-dark-700 rounded-full p-1.5 mb-8 border border-dark-600">
+                                <h3 className="font-black text-xs text-gray-400 uppercase tracking-widest mb-3">Seleccionar semana</h3>
+                                <div className="flex bg-dark-800 rounded-2xl p-1.5 mb-8 border border-dark-600 shadow-inner">
                                     {[1, 2, 3, 4].map(num => (
-                                        <button key={num} onClick={() => setActiveWeek(num)} className={`flex-1 py-2 text-sm font-bold rounded-full transition-all ${activeWeek === num ? 'bg-brand-500 text-black shadow-md' : 'text-gray-400 hover:text-white'}`}>Sem. {num}</button>
+                                        <button key={num} onClick={() => setActiveWeek(num)} className={`flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all ${activeWeek === num ? 'bg-brand-500 text-white shadow-lg shadow-brand-500/30' : 'text-gray-400 hover:text-white'}`}>Sem. {num}</button>
                                     ))}
                                 </div>
 
-                                <h3 className="font-bold text-xl mb-6 text-white">Tus plantillas</h3>
-                                <div className="space-y-6">
+                                <h3 className="font-black text-xs text-gray-400 uppercase tracking-widest mb-4">Tus plantillas</h3>
+                                <div className="space-y-4">
                                     {(globalData.routines[currentUser.id] || []).map(day => {
                                         const totalEx = day.sections ? day.sections.reduce((acc, s) => acc + (s.exercises?.length || 0), 0) : (day.exercises?.length || 0);
                                         return (
-                                            <div key={day.id} onClick={() => {setActiveDayId(day.id); setIsTrainingStarted(false); setView('cliente_entrenamiento');}} className="flex items-center gap-4 cursor-pointer group bg-dark-800 p-3 rounded-2xl border border-transparent hover:border-brand-500/50 transition-all">
-                                                <div className="w-16 h-16 bg-white rounded-xl shrink-0 flex items-center justify-center text-black shadow-lg">
-                                                    <i className="fa-solid fa-dumbbell text-2xl"></i>
+                                            <div key={day.id} onClick={() => {setActiveDayId(day.id); setIsTrainingStarted(false); setView('cliente_entrenamiento');}} className="glass-panel p-4 rounded-2xl flex items-center gap-4 cursor-pointer group hover:border-brand-500/50 transition-all shadow-md">
+                                                <div className="w-14 h-14 bg-dark-800 rounded-xl shrink-0 flex items-center justify-center text-brand-500 border border-dark-600 group-hover:scale-105 transition-transform shadow-inner">
+                                                    <i className="fa-solid fa-dumbbell text-xl"></i>
                                                 </div>
-                                                <div className="flex-1 overflow-hidden border-b border-dark-700 pb-3 group-last:border-0 pt-1">
-                                                    <h4 className="font-bold text-lg text-white truncate lowercase">{day.name}</h4>
-                                                    <p className="text-sm text-gray-500 truncate">{totalEx} ejercicios programados</p>
+                                                <div className="flex-1 overflow-hidden">
+                                                    <h4 className="font-bold text-base text-white truncate lowercase">{day.name}</h4>
+                                                    <p className="text-xs text-gray-400 truncate mt-0.5">{totalEx} ejercicios programados</p>
                                                 </div>
-                                                <i className="fa-solid fa-ellipsis-vertical text-gray-600 pr-2"></i>
+                                                <i className="fa-solid fa-chevron-right text-gray-600 text-xs pr-1"></i>
                                             </div>
                                         );
                                     })}
                                 </div>
                             </div>
                             
-                            <div className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-[480px] bg-black/95 backdrop-blur border-t border-dark-700 flex justify-around p-4 text-gray-500 pb-6">
-                                <button className="text-brand-500 flex flex-col items-center gap-1"><i className="fa-solid fa-dumbbell text-xl"></i><span className="text-[10px] font-bold">Entrenar</span></button>
-                                <button onClick={() => showToast('Próximamente: Historial general de todas las rutinas')} className="hover:text-white transition-colors flex flex-col items-center gap-1"><i className="fa-solid fa-chart-line text-xl"></i><span className="text-[10px] font-bold">Progreso</span></button>
-                                <button onClick={() => showToast('Próximamente: Perfil y configuración')} className="hover:text-white transition-colors flex flex-col items-center gap-1"><i className="fa-regular fa-user text-xl"></i><span className="text-[10px] font-bold">Perfil</span></button>
+                            <div className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-[480px] bg-dark-900/95 backdrop-blur border-t border-dark-700 flex justify-around p-3 text-gray-400 pb-5 z-20">
+                                <button className="text-brand-500 flex flex-col items-center gap-1"><i className="fa-solid fa-dumbbell text-lg"></i><span className="text-[10px] font-black uppercase tracking-wider">Entrenar</span></button>
+                                <button onClick={() => showToast('Próximamente: Estadísticas de progreso')} className="hover:text-white transition-colors flex flex-col items-center gap-1"><i className="fa-solid fa-chart-line text-lg"></i><span className="text-[10px] font-black uppercase tracking-wider">Progreso</span></button>
+                                <button onClick={() => showToast('Próximamente: Perfil de usuario')} className="hover:text-white transition-colors flex flex-col items-center gap-1"><i className="fa-regular fa-user text-lg"></i><span className="text-[10px] font-black uppercase tracking-wider">Perfil</span></button>
                             </div>
                         </div>
                     )}
@@ -912,14 +947,14 @@
                     {view === 'cliente_entrenamiento' && (
                         !isTrainingStarted ? (
                             <div className="app-container pb-24">
-                                <header className="p-4 flex items-center justify-between sticky top-0 bg-black/90 backdrop-blur z-10 border-b border-dark-700">
-                                    <button onClick={() => setView('cliente_listado')} className="text-brand-500 w-10 h-10 flex items-center justify-center hover:text-white transition-colors"><i className="fa-solid fa-arrow-left text-xl"></i></button>
-                                    <button onClick={() => showToast('Próximamente: Inteligencia Artificial para modificar la rutina')} className="bg-dark-700 text-white px-4 py-1.5 rounded-full text-sm font-bold flex items-center gap-2 border border-dark-600 hover:border-brand-500 transition-colors"><i className="fa-solid fa-wand-magic-sparkles text-brand-500"></i> Adaptar</button>
+                                <header className="p-4 flex items-center justify-between sticky top-0 bg-dark-900/90 backdrop-blur z-10 border-b border-dark-700">
+                                    <button onClick={() => setView('cliente_listado')} className="text-brand-500 w-10 h-10 flex items-center justify-center hover:text-white transition-colors bg-dark-800 rounded-xl"><i className="fa-solid fa-arrow-left text-base"></i></button>
+                                    <button onClick={() => showToast('Próximamente: IA adaptativa')} className="bg-dark-800 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 border border-dark-600 hover:border-brand-500 transition-colors"><i className="fa-solid fa-wand-magic-sparkles text-brand-500"></i> Adaptar</button>
                                 </header>
 
                                 <div className="p-5">
-                                    <h2 className="font-black text-4xl lowercase text-white mb-1">{(globalData.routines[currentUser.id]?.find(d => d.id === activeDayId) || {}).name}</h2>
-                                    <p className="text-gray-400 mb-8 font-medium">Semana {activeWeek}</p>
+                                    <h2 className="font-black text-3xl lowercase text-white mb-1 tracking-tight">{(globalData.routines[currentUser.id]?.find(d => d.id === activeDayId) || {}).name}</h2>
+                                    <p className="text-xs text-brand-500 font-black uppercase tracking-widest mb-8">Semana {activeWeek} del Mesociclo</p>
 
                                     {(() => {
                                         const day = globalData.routines[currentUser.id]?.find(d => d.id === activeDayId) || {};
@@ -929,18 +964,18 @@
                                             <div className="space-y-8">
                                                 {sections.map((sec, sIdx) => (
                                                     <div key={sIdx}>
-                                                        <h3 className="font-bold text-brand-500 text-sm uppercase tracking-wider mb-4 border-b border-dark-700 pb-2">{sec.name}</h3>
-                                                        <div className="space-y-4">
+                                                        <h3 className="font-black text-xs text-brand-500 uppercase tracking-widest mb-3 border-b border-dark-700 pb-2">{sec.name}</h3>
+                                                        <div className="space-y-3">
                                                             {sec.exercises?.map((ex) => {
                                                                 const wCfg = ex.weeks?.[activeWeek] || { sets: ex.sets || '4', reps: ex.reps || '10' };
                                                                 return (
-                                                                    <div key={ex.id} className="flex gap-4 items-center bg-dark-800 p-3 rounded-2xl border border-dark-700">
-                                                                        <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center shrink-0 shadow-md">
-                                                                            <i className="fa-solid fa-dumbbell text-black text-xl"></i>
+                                                                    <div key={ex.id} className="glass-panel p-3.5 rounded-2xl flex gap-3.5 items-center border border-dark-600 shadow-sm">
+                                                                        <div className="w-12 h-12 bg-dark-800 rounded-xl flex items-center justify-center shrink-0 border border-dark-600 text-brand-500">
+                                                                            <i className="fa-solid fa-dumbbell text-base"></i>
                                                                         </div>
-                                                                        <div className="flex-1">
-                                                                            <p className="text-xs text-brand-500 font-bold mb-1 tracking-wider">{wCfg.sets} SERIES x {wCfg.reps} REPS (RIR {ex.rir || '2'})</p>
-                                                                            <p className="font-bold text-white text-base leading-tight">{ex.name}</p>
+                                                                        <div className="flex-1 overflow-hidden">
+                                                                            <p className="text-[10px] text-brand-500 font-black mb-0.5 tracking-wider uppercase">{wCfg.sets} SERIES x {wCfg.reps} REPS • RIR {ex.rir || '2'}</p>
+                                                                            <p className="font-bold text-white text-sm leading-tight truncate">{ex.name}</p>
                                                                         </div>
                                                                     </div>
                                                                 );
@@ -953,17 +988,17 @@
                                     })()}
                                 </div>
 
-                                <div className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-[480px] bg-black/90 backdrop-blur p-5 border-t border-dark-700">
-                                    <button onClick={() => { setIsTrainingStarted(true); setTrainingTime(0); setRestTime(0); unlockAudio(); }} className="w-full bg-brand-500 text-black font-black text-lg py-4 rounded-2xl flex items-center justify-center gap-2 hover:bg-brand-600 transition-colors shadow-lg shadow-brand-500/20">
+                                <div className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-[480px] bg-dark-900/95 backdrop-blur p-4 border-t border-dark-700 z-20">
+                                    <button onClick={() => { setIsTrainingStarted(true); setTrainingTime(0); setRestTime(0); unlockAudio(); }} className="w-full bg-brand-500 text-white font-black text-sm uppercase tracking-wider py-4 rounded-2xl flex items-center justify-center gap-2 hover:bg-brand-600 transition-all shadow-xl shadow-brand-500/30">
                                         <i className="fa-solid fa-play"></i> Empezar Entrenamiento
                                     </button>
                                 </div>
                             </div>
                         ) : (
                             <div className="app-container pb-20">
-                                <header className="p-4 flex items-center justify-between sticky top-0 bg-black/95 backdrop-blur z-20 border-b border-dark-700 shadow-md">
-                                    <button onClick={() => showToast('Cronómetro general de sesión')} className="text-brand-500 font-bold flex items-center gap-2 hover:text-white transition-colors"><i className="fa-solid fa-stopwatch"></i> {formatTime(trainingTime)}</button>
-                                    <button onClick={() => { setIsTrainingStarted(false); showToast(`¡Entrenamiento finalizado! Tiempo: ${formatTime(trainingTime)}`); setView('cliente_listado'); }} className="bg-dark-700 text-brand-500 px-5 py-2 rounded-xl text-sm font-bold border border-dark-600 hover:bg-dark-600 transition-colors shadow-sm">Terminar</button>
+                                <header className="p-4 flex items-center justify-between sticky top-0 bg-dark-900/95 backdrop-blur z-20 border-b border-dark-700 shadow-md">
+                                    <button onClick={() => showToast('Sesión en curso')} className="text-brand-500 text-xs font-black uppercase tracking-wider flex items-center gap-2 bg-dark-800 px-3.5 py-2 rounded-xl border border-dark-600"><i className="fa-solid fa-stopwatch animate-pulse"></i> {formatTime(trainingTime)}</button>
+                                    <button onClick={() => { setIsTrainingStarted(false); showToast(`¡Entrenamiento finalizado! Tiempo: ${formatTime(trainingTime)}`); setView('cliente_listado'); }} className="bg-dark-800 text-brand-500 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider border border-dark-600 hover:bg-dark-700 transition-colors">Terminar</button>
                                 </header>
 
                                 <div className="p-4 pt-6">
@@ -975,7 +1010,7 @@
                                             <div className="space-y-8">
                                                 {sections.map((sec, sIdx) => (
                                                     <div key={sIdx}>
-                                                        <h3 className="font-bold text-brand-500 text-sm uppercase tracking-wider mb-4 border-b border-dark-700 pb-2 flex items-center gap-2">
+                                                        <h3 className="font-black text-xs text-brand-500 uppercase tracking-widest mb-3 border-b border-dark-700 pb-2 flex items-center gap-2">
                                                             <i className="fa-solid fa-layer-group"></i> {sec.name}
                                                         </h3>
                                                         <div className="space-y-6">
@@ -1006,10 +1041,10 @@
 
                                 {/* Cronómetro Flotante */}
                                 {restTime > 0 && (
-                                    <div className="fixed bottom-10 left-1/2 transform -translate-x-1/2 bg-brand-500 text-black px-6 py-3 rounded-full font-bold text-lg shadow-[0_0_25px_rgba(167,199,231,0.6)] flex items-center gap-3 z-50 animate-bounce cursor-pointer" onClick={() => setRestTime(0)}>
-                                        <i className="fa-solid fa-stopwatch animate-pulse text-xl"></i>
-                                        {Math.floor(restTime/60)}:{(restTime%60).toString().padStart(2,'0')}
-                                        <div className="ml-2 bg-black/20 hover:bg-black/40 transition-colors rounded-full w-8 h-8 flex items-center justify-center"><i className="fa-solid fa-xmark"></i></div>
+                                    <div className="fixed bottom-16 left-1/2 transform -translate-x-1/2 bg-brand-500 text-white px-6 py-3 rounded-2xl font-black text-sm tracking-wider shadow-[0_0_25px_rgba(255,94,0,0.6)] flex items-center gap-3 z-50 animate-bounce cursor-pointer uppercase" onClick={() => setRestTime(0)}>
+                                        <i className="fa-solid fa-stopwatch animate-pulse text-lg"></i>
+                                        Descanso: {Math.floor(restTime/60)}:{(restTime%60).toString().padStart(2,'0')}
+                                        <div className="ml-1 bg-black/20 hover:bg-black/40 transition-colors rounded-xl w-6 h-6 flex items-center justify-center text-xs"><i className="fa-solid fa-xmark"></i></div>
                                     </div>
                                 )}
                             </div>
