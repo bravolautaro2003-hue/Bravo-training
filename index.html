@@ -19,12 +19,9 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.33.1/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
 
     <script>
-        // Limpiador automático para evitar el error de pantalla negra
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(function(registrations) {
-                for(let registration of registrations) {
-                    registration.unregister();
-                }
+                for(let registration of registrations) { registration.unregister(); }
             });
         }
 
@@ -36,12 +33,17 @@
                         dark: { 900: '#000000', 800: '#111111', 700: '#1c1c1e', 600: '#2c2c2e' }
                     },
                     animation: {
-                        'slide-down': 'slideDown 0.3s ease-out forwards',
+                        'toast-down': 'toastDown 0.3s ease-out forwards',
+                        'fade-in': 'fadeIn 0.2s ease-out forwards',
                     },
                     keyframes: {
-                        slideDown: {
+                        toastDown: {
                             '0%': { transform: 'translate(-50%, -100%)', opacity: 0 },
                             '100%': { transform: 'translate(-50%, 0)', opacity: 1 },
+                        },
+                        fadeIn: {
+                            '0%': { opacity: 0, transform: 'translateY(-10px)' },
+                            '100%': { opacity: 1, transform: 'translateY(0)' },
                         }
                     }
                 }
@@ -106,8 +108,8 @@
             } catch(e) { console.log("Audio falló", e); }
         };
 
-        // --- COMPONENTE: EDICIÓN DE EJERCICIO (PROFESOR) CON VARIACIÓN INTERSEMANAL ---
-        function ExerciseRow({ exercise, onUpdate, onDelete }) {
+        // --- COMPONENTE: EDICIÓN DE EJERCICIO (PROFESOR) ---
+        function ExerciseRow({ exercise, clientProgress, onUpdate, onDelete }) {
             const [localEx, setLocalEx] = useState(exercise);
             const [showSuggestions, setShowSuggestions] = useState(false);
             const [editWeek, setEditWeek] = useState(1); 
@@ -149,8 +151,18 @@
 
             const currentWeekData = localEx.weeks?.[editWeek] || { sets: localEx.sets || '4', reps: localEx.reps || '10' };
 
+            const exerciseNotes = [];
+            if (clientProgress) {
+                [1,2,3,4].forEach(w => {
+                    const note = clientProgress[w]?.[localEx.id]?.note;
+                    if (note && note.trim() !== '') {
+                        exerciseNotes.push({ week: w, note });
+                    }
+                });
+            }
+
             return (
-                <div className="bg-dark-700 p-4 rounded-xl mb-4 border border-dark-600">
+                <div className="bg-dark-700 p-4 rounded-xl mb-4 border border-dark-600 relative z-10">
                     <div className="flex justify-between items-start mb-2 relative">
                         <div className="w-5/6 relative">
                             <input 
@@ -215,10 +227,31 @@
                             <i className="fa-regular fa-clock"></i> <input className="w-12 bg-dark-600 rounded p-1 text-center text-white outline-none focus:border focus:border-brand-500" value={localEx.rest || '90s'} onChange={(e) => handleChange('rest', e.target.value)} onBlur={handleBlur} placeholder="90s" />
                         </div>
                     </div>
-                    <div className="mt-4 pt-3 border-t border-dark-600 flex items-center gap-2">
+                    
+                    <div className="mt-4 pt-3 border-t border-dark-600 flex items-center gap-2 mb-2">
                         <input type="checkbox" id={`uni-${localEx.id}`} checked={localEx.isUnilateral || false} onChange={(e) => {handleChange('isUnilateral', e.target.checked); handleBlur();}} className="w-4 h-4 accent-brand-500 rounded cursor-pointer" />
                         <label htmlFor={`uni-${localEx.id}`} className="text-xs text-gray-400 cursor-pointer select-none">Ejercicio Unilateral (Separar Izq/Der)</label>
                     </div>
+
+                    <div className="mt-3">
+                        <textarea 
+                            className="w-full bg-dark-800 text-gray-300 p-2.5 rounded-lg outline-none border border-dark-600 focus:border-brand-500 text-base resize-none box-border"
+                            rows="2"
+                            placeholder="Aclaraciones para el alumno (ej: bajar lento, pausa de 2 seg)..."
+                            value={localEx.coachNote || ''}
+                            onChange={(e) => handleChange('coachNote', e.target.value)}
+                            onBlur={handleBlur}
+                        />
+                    </div>
+
+                    {exerciseNotes.length > 0 && (
+                        <div className="mt-3 bg-dark-800/80 p-3 rounded-lg border border-brand-500/30">
+                            <span className="text-brand-500 text-xs font-bold flex items-center gap-2 mb-2"><i className="fa-solid fa-comment-dots"></i> Notas del alumno:</span>
+                            {exerciseNotes.map(en => (
+                                <div key={en.week} className="text-xs text-gray-300 mb-1.5 last:mb-0"><strong className="text-gray-500">Semana {en.week}:</strong> {en.note}</div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             );
         }
@@ -237,7 +270,7 @@
             const [localSets, setLocalSets] = useState(() => {
                 const saved = progressData?.sets;
                 if (saved && saved.length > 0) return saved;
-                return Array.from({length: totalRows}, () => ({ weight: '', reps: '', done: false, type: 'N' }));
+                return Array.from({length: totalRows}, () => ({ weight: '', reps: '', rir: '', done: false, type: 'N' }));
             });
 
             useEffect(() => {
@@ -245,35 +278,47 @@
                 if (saved && saved.length > 0) {
                     setLocalSets(saved);
                 } else {
-                    setLocalSets(Array.from({length: totalRows}, () => ({ weight: '', reps: '', done: false, type: 'N' })));
+                    setLocalSets(Array.from({length: totalRows}, () => ({ weight: '', reps: '', rir: '', done: false, type: 'N' })));
                 }
                 setLocalNote(progressData?.note || '');
             }, [progressData, totalRows, activeWeek]);
 
-            const updateSet = (index, field, value) => {
-                if(field === 'done') unlockAudio();
+            const updateSetLocal = (index, field, value) => {
+                const newSets = [...localSets];
+                newSets[index][field] = value;
+                setLocalSets(newSets);
+            };
+
+            const handleSetBlur = () => {
+                onSaveProgress(localSets, localNote);
+            };
+
+            const toggleDone = (index) => {
+                unlockAudio();
                 const newSets = [...localSets];
                 const wasDone = newSets[index].done;
-                newSets[index][field] = value;
+                newSets[index].done = !wasDone;
                 setLocalSets(newSets);
                 onSaveProgress(newSets, localNote);
                 
-                if (field === 'done' && value === true && !wasDone) {
+                if (!wasDone) {
                     onStartRest(exercise.rest || '90s');
                 }
             };
 
             const handleNoteChange = (e) => {
-                const newNote = e.target.value;
-                setLocalNote(newNote);
-                onSaveProgress(localSets, newNote);
+                setLocalNote(e.target.value);
+            };
+
+            const handleNoteBlur = () => {
+                onSaveProgress(localSets, localNote);
             };
 
             const addSet = () => {
                 const addCount = isUni ? 2 : 1;
                 const newSets = [...localSets];
                 for(let i=0; i<addCount; i++){
-                    newSets.push({ weight: '', reps: '', done: false, type: 'N' });
+                    newSets.push({ weight: '', reps: '', rir: '', done: false, type: 'N' });
                 }
                 setLocalSets(newSets);
                 onSaveProgress(newSets, localNote);
@@ -283,7 +328,8 @@
                 const types = ['N', 'W', 'D'];
                 const current = localSets[index].type || 'N';
                 const next = types[(types.indexOf(current) + 1) % types.length];
-                updateSet(index, 'type', next);
+                updateSetLocal(index, 'type', next);
+                handleSetBlur();
             };
 
             return (
@@ -295,10 +341,17 @@
                             </div>
                             <div>
                                 <h4 className="font-bold text-lg text-white leading-tight">{exercise.name}</h4>
-                                <span className="text-xs text-brand-500 font-semibold">Semana {activeWeek}: {weekConfig.sets} series x {weekConfig.reps} reps</span>
+                                <span className="text-xs text-brand-500 font-semibold">Semana {activeWeek}: {weekConfig.sets} series x {weekConfig.reps} reps (RIR objetivo: {exercise.rir || '2'})</span>
                             </div>
                         </div>
                     </div>
+
+                    {exercise.coachNote && (
+                        <div className="bg-dark-800 border-l-4 border-brand-500 p-3 rounded-r-xl mb-4 flex gap-3 items-start shadow-sm">
+                            <i className="fa-solid fa-circle-info text-brand-500 mt-0.5"></i>
+                            <p className="text-sm text-gray-300 whitespace-pre-wrap">{exercise.coachNote}</p>
+                        </div>
+                    )}
 
                     <div className="flex gap-2 mb-4 overflow-x-auto hide-scrollbar">
                         <button onClick={() => {setShowHistory(!showHistory); setShowNotes(false);}} className={`text-sm font-bold px-4 py-2 rounded-full flex items-center gap-2 transition-colors border ${showHistory ? 'bg-brand-500 text-black border-brand-500' : 'bg-dark-700 text-white border-dark-600 hover:bg-dark-600'}`}>
@@ -310,18 +363,19 @@
                     </div>
 
                     {showNotes && (
-                        <div className="mb-4 animate-slide-down origin-top">
+                        <div className="mb-4 animate-fade-in origin-top w-full box-border">
                             <textarea 
                                 value={localNote} 
                                 onChange={handleNoteChange} 
+                                onBlur={handleNoteBlur}
                                 placeholder="Anotá acá configuraciones de la máquina, sensaciones, etc..." 
-                                className="w-full bg-dark-800 text-white p-3 rounded-xl outline-none border border-dark-600 focus:border-brand-500 text-sm resize-none h-24 shadow-inner"
+                                className="w-full bg-dark-800 text-white p-3 rounded-xl outline-none border border-dark-600 focus:border-brand-500 text-base resize-none h-24 shadow-inner box-border block"
                             />
                         </div>
                     )}
 
                     {showHistory && (
-                        <div className="mb-4 bg-dark-800 p-4 rounded-xl border border-dark-600 animate-slide-down origin-top shadow-inner text-sm">
+                        <div className="mb-4 bg-dark-800 p-4 rounded-xl border border-dark-600 animate-fade-in origin-top shadow-inner text-sm">
                             <h5 className="font-bold text-white mb-3 flex items-center gap-2"><i className="fa-solid fa-chart-simple text-brand-500"></i> Progreso en este mesociclo</h5>
                             {[1, 2, 3, 4].map(w => {
                                 const wData = allWeeksData?.[w]?.[exercise.id]?.sets;
@@ -332,7 +386,7 @@
                                         <div className="flex flex-wrap gap-2">
                                             {wData.map((s, idx) => {
                                                 if(s.weight && s.reps) return (
-                                                    <span key={idx} className="bg-dark-700 px-2 py-1 rounded text-xs border border-dark-600">{s.weight}kg x {s.reps}</span>
+                                                    <span key={idx} className="bg-dark-700 px-2 py-1 rounded text-xs border border-dark-600">{s.weight}kg x {s.reps} {s.rir !== undefined && s.rir !== '' ? `(RIR ${s.rir})` : ''}</span>
                                                 );
                                                 return null;
                                             })}
@@ -344,17 +398,19 @@
                         </div>
                     )}
                     
-                    <div className="grid grid-cols-[auto_1fr_1fr_1fr_auto] gap-2 mb-2 text-[10px] text-gray-500 font-bold uppercase tracking-widest px-2">
-                        <span className="w-8 text-center">Serie</span>
-                        <span className="text-center">Previa</span>
-                        <span className="text-center">KG</span>
-                        <span className="text-center">Repes</span>
-                        <span className="w-10"></span>
+                    {/* Tabla de Sets con Autoregulación (RIR Real) */}
+                    <div className="grid grid-cols-[32px_55px_1fr_1fr_45px_40px] gap-1.5 mb-2 text-[10px] text-gray-500 font-bold uppercase tracking-widest px-1 text-center">
+                        <span>Set</span>
+                        <span>Previa</span>
+                        <span>KG</span>
+                        <span>Reps</span>
+                        <span>RIR</span>
+                        <span></span>
                     </div>
                     
                     {localSets.map((set, i) => {
                         const prevSet = previousWeekData?.sets?.[i];
-                        const prevText = prevSet?.weight && prevSet?.reps ? `${prevSet.weight} x ${prevSet.reps}` : '-';
+                        const prevText = prevSet?.weight && prevSet?.reps ? `${prevSet.weight}x${prevSet.reps}` : '-';
                         
                         const isRight = isUni && (i % 2 !== 0);
                         const setNum = isUni ? Math.floor(i / 2) + 1 : i + 1;
@@ -371,30 +427,49 @@
                         else if (isUni) badgeStyle = isRight ? "bg-blue-900/30 text-blue-400 border-blue-900" : "bg-green-900/30 text-green-400 border-green-900";
 
                         return (
-                            <div key={i} className={`grid grid-cols-[auto_1fr_1fr_1fr_auto] gap-2 items-center mb-2 p-1`}>
+                            <div key={i} className="grid grid-cols-[32px_55px_1fr_1fr_45px_40px] gap-1.5 items-center mb-2">
                                 <button onClick={() => cycleSetType(i)} className={`w-8 h-8 flex items-center justify-center rounded-lg font-bold text-xs border cursor-pointer hover:opacity-80 transition-opacity ${badgeStyle}`}>
                                     {badgeText}
                                 </button>
                                 
-                                <div className="text-center text-gray-500 text-sm font-medium">
+                                <div className="text-center text-gray-500 text-xs font-medium truncate">
                                     {prevText}
                                 </div>
 
-                                <div className="relative">
-                                    <input type="number" className="w-full bg-dark-700 rounded-lg py-2.5 text-white outline-none text-center font-bold border border-dark-600 focus:border-brand-500 transition-colors" placeholder="-" value={set.weight} onChange={(e) => updateSet(i, 'weight', e.target.value)} />
-                                </div>
+                                <input 
+                                    type="number" 
+                                    className="w-full bg-dark-700 rounded-lg py-2.5 text-white outline-none text-center font-bold text-sm border border-dark-600 focus:border-brand-500 transition-colors box-border" 
+                                    placeholder="-" 
+                                    value={set.weight} 
+                                    onChange={(e) => updateSetLocal(i, 'weight', e.target.value)} 
+                                    onBlur={handleSetBlur}
+                                />
                                 
-                                <div className="relative">
-                                    <input type="number" className="w-full bg-dark-700 rounded-lg py-2.5 text-white outline-none text-center font-bold border border-dark-600 focus:border-brand-500 transition-colors" placeholder="-" value={set.reps} onChange={(e) => updateSet(i, 'reps', e.target.value)} />
-                                </div>
+                                <input 
+                                    type="number" 
+                                    className="w-full bg-dark-700 rounded-lg py-2.5 text-white outline-none text-center font-bold text-sm border border-dark-600 focus:border-brand-500 transition-colors box-border" 
+                                    placeholder="-" 
+                                    value={set.reps} 
+                                    onChange={(e) => updateSetLocal(i, 'reps', e.target.value)} 
+                                    onBlur={handleSetBlur}
+                                />
+
+                                <input 
+                                    type="number" 
+                                    className="w-full bg-dark-700 rounded-lg py-2.5 text-brand-500 outline-none text-center font-bold text-sm border border-dark-600 focus:border-brand-500 transition-colors box-border" 
+                                    placeholder="RIR" 
+                                    value={set.rir} 
+                                    onChange={(e) => updateSetLocal(i, 'rir', e.target.value)} 
+                                    onBlur={handleSetBlur}
+                                />
                                 
-                                <button onClick={() => updateSet(i, 'done', !set.done)} className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${set.done ? 'bg-brand-500 text-black shadow-[0_0_12px_rgba(167,199,231,0.4)]' : 'bg-dark-700 text-gray-500 border border-dark-600 hover:text-white'}`}>
+                                <button onClick={() => toggleDone(i)} className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all box-border ${set.done ? 'bg-brand-500 text-black shadow-[0_0_12px_rgba(167,199,231,0.4)]' : 'bg-dark-700 text-gray-500 border border-dark-600 hover:text-white'}`}>
                                     <i className="fa-solid fa-check"></i>
                                 </button>
                             </div>
                         )
                     })}
-                    <button onClick={addSet} className="w-full mt-4 bg-dark-700 text-brand-500 font-bold py-3 rounded-xl text-sm border border-dark-600 hover:bg-dark-600 transition-colors">
+                    <button onClick={addSet} className="w-full mt-4 bg-dark-700 text-brand-500 font-bold py-3 rounded-xl text-sm border border-dark-600 hover:bg-dark-600 transition-colors box-border">
                         + Añadir serie {isUni ? 'I/D' : ''}
                     </button>
                 </div>
@@ -456,10 +531,21 @@
             }, [restTime]);
 
             const startRest = (timeString) => {
-                let t = parseInt(timeString);
-                if (timeString.toLowerCase().includes('m')) t = t * 60;
-                else if (isNaN(t)) t = 90; 
-                setRestTime(t);
+                if (!timeString) { setRestTime(90); return; }
+                let str = timeString.toLowerCase().trim();
+                let t = 0;
+                if (str.includes(':')) {
+                    const parts = str.split(':');
+                    t = parseInt(parts[0] || 0) * 60 + parseInt(parts[1] || 0);
+                } else if (str.includes('m')) {
+                    const parts = str.split('m');
+                    const m = parseInt(parts[0]) || 0;
+                    const s = parseInt(parts[1]) || 0; 
+                    t = m * 60 + s;
+                } else {
+                    t = parseInt(str) || 90; 
+                }
+                setRestTime(t || 90);
             };
 
             const formatTime = (secs) => {
@@ -514,7 +600,13 @@
             const addDay = (clientId) => {
                 const newData = JSON.parse(JSON.stringify(globalData));
                 const newId = Date.now().toString();
-                newData.routines[clientId].push({ id: newId, name: "Nueva Plantilla", exercises: [] });
+                newData.routines[clientId].push({ 
+                    id: newId, 
+                    name: "Nueva Plantilla", 
+                    sections: [
+                        { id: 'sec_1', name: 'Bloque Principal', exercises: [] }
+                    ] 
+                });
                 saveData(newData);
             };
 
@@ -533,13 +625,19 @@
                 const dayToClone = newData.routines[clientId].find(d => d.id === dayId);
                 if (!dayToClone) return;
 
-                const newDay = {
-                    id: Date.now().toString(),
-                    name: dayToClone.name + " (Copia)",
-                    exercises: dayToClone.exercises.map(ex => ({
+                const clonedSections = (dayToClone.sections || [{ name: 'Bloque Principal', exercises: dayToClone.exercises || [] }]).map(sec => ({
+                    ...sec,
+                    id: Math.random().toString(36).substr(2, 9),
+                    exercises: sec.exercises.map(ex => ({
                         ...ex,
                         id: Math.random().toString(36).substr(2, 9)
                     }))
+                }));
+
+                const newDay = {
+                    id: Date.now().toString(),
+                    name: dayToClone.name + " (Copia)",
+                    sections: clonedSections
                 };
 
                 newData.routines[clientId].push(newDay);
@@ -547,25 +645,51 @@
                 showToast('Plantilla duplicada con éxito');
             };
 
-            const addExercise = (clientId, dayId) => {
+            const addSection = (clientId, dayId) => {
                 const newData = JSON.parse(JSON.stringify(globalData));
                 const day = newData.routines[clientId].find(d => d.id === dayId);
-                day.exercises.push({ id: Date.now().toString(), name: '', sets: '4', reps: '10', rir: '2', rest: '90s', isUnilateral: false, weeks: {} });
+                if(!day.sections) day.sections = [];
+                day.sections.push({ id: Math.random().toString(36).substr(2, 9), name: 'Nuevo Bloque', exercises: [] });
                 saveData(newData);
             };
 
-            const updateExercise = (clientId, dayId, updatedExercise) => {
+            const updateSectionName = (clientId, dayId, secId, newName) => {
                 const newData = JSON.parse(JSON.stringify(globalData));
                 const day = newData.routines[clientId].find(d => d.id === dayId);
-                const index = day.exercises.findIndex(e => e.id === updatedExercise.id);
-                day.exercises[index] = updatedExercise;
+                const sec = day.sections.find(s => s.id === secId);
+                if(sec) sec.name = newName;
                 saveData(newData);
             };
 
-            const deleteExercise = (clientId, dayId, exerciseId) => {
+            const deleteSection = (clientId, dayId, secId) => {
                 const newData = JSON.parse(JSON.stringify(globalData));
                 const day = newData.routines[clientId].find(d => d.id === dayId);
-                day.exercises = day.exercises.filter(e => e.id !== exerciseId);
+                day.sections = day.sections.filter(s => s.id !== secId);
+                saveData(newData);
+            };
+
+            const addExerciseToSection = (clientId, dayId, secId) => {
+                const newData = JSON.parse(JSON.stringify(globalData));
+                const day = newData.routines[clientId].find(d => d.id === dayId);
+                const sec = day.sections.find(s => s.id === secId);
+                sec.exercises.push({ id: Math.random().toString(36).substr(2, 9), name: '', sets: '4', reps: '10', rir: '2', rest: '90s', isUnilateral: false, weeks: {} });
+                saveData(newData);
+            };
+
+            const updateExerciseInSection = (clientId, dayId, secId, updatedExercise) => {
+                const newData = JSON.parse(JSON.stringify(globalData));
+                const day = newData.routines[clientId].find(d => d.id === dayId);
+                const sec = day.sections.find(s => s.id === secId);
+                const index = sec.exercises.findIndex(e => e.id === updatedExercise.id);
+                sec.exercises[index] = updatedExercise;
+                saveData(newData);
+            };
+
+            const deleteExerciseFromSection = (clientId, dayId, secId, exerciseId) => {
+                const newData = JSON.parse(JSON.stringify(globalData));
+                const day = newData.routines[clientId].find(d => d.id === dayId);
+                const sec = day.sections.find(s => s.id === secId);
+                sec.exercises = sec.exercises.filter(e => e.id !== exerciseId);
                 saveData(newData);
             };
 
@@ -587,7 +711,7 @@
             return (
                 <div className="relative">
                     {toast && (
-                        <div className={`fixed top-6 left-1/2 transform -translate-x-1/2 z-50 px-6 py-3 rounded-full text-sm font-bold shadow-2xl animate-slide-down text-center flex items-center gap-3 whitespace-nowrap ${toast.type === 'error' ? 'bg-red-600 text-white' : 'bg-brand-500 text-black'}`}>
+                        <div className={`fixed top-6 left-1/2 transform -translate-x-1/2 z-50 px-6 py-3 rounded-full text-sm font-bold shadow-2xl animate-toast-down text-center flex items-center gap-3 whitespace-nowrap ${toast.type === 'error' ? 'bg-red-600 text-white' : 'bg-brand-500 text-black'}`}>
                             {toast.type === 'error' ? <i className="fa-solid fa-triangle-exclamation"></i> : <i className="fa-solid fa-bell"></i>}
                             {toast.msg}
                         </div>
@@ -615,7 +739,7 @@
                             {activeClient ? (
                                 activeDayId && globalData.routines[activeClient.id]?.find(d => d.id === activeDayId) ? (
                                     <>
-                                        <header className="p-4 flex items-center justify-between sticky top-0 bg-black/90 backdrop-blur z-10 border-b border-dark-700">
+                                        <header className="p-4 flex items-center justify-between sticky top-0 bg-black/90 backdrop-blur z-50 border-b border-dark-700">
                                             <button onClick={() => setActiveDayId(null)} className="text-brand-500 w-10 h-10 flex items-center justify-center hover:text-white transition-colors"><i className="fa-solid fa-arrow-left text-xl"></i></button>
                                             <h2 className="font-bold text-lg text-white">Editar Plantilla</h2>
                                             <div className="w-10"></div>
@@ -626,12 +750,50 @@
                                                 newData.routines[activeClient.id].find(d => d.id === activeDayId).name = e.target.value;
                                                 saveData(newData);
                                             }}/>
-                                            {globalData.routines[activeClient.id].find(d => d.id === activeDayId).exercises.map(ex => (
-                                                <ExerciseRow key={ex.id} exercise={ex} onUpdate={(u) => updateExercise(activeClient.id, activeDayId, u)} onDelete={() => deleteExercise(activeClient.id, activeDayId, ex.id)} />
-                                            ))}
-                                            <button onClick={() => addExercise(activeClient.id, activeDayId)} className="w-full bg-brand-500 text-black font-bold py-4 rounded-xl mt-4 hover:bg-brand-600 transition-colors shadow-lg shadow-brand-500/20">
-                                                <i className="fa-solid fa-plus mr-2"></i> Agregar ejercicio
-                                            </button>
+                                            
+                                            {/* Normalización para soportar secciones / bloques */}
+                                            {(() => {
+                                                const day = globalData.routines[activeClient.id].find(d => d.id === activeDayId);
+                                                const sections = day.sections || [{ id: 'default', name: 'Bloque Principal', exercises: day.exercises || [] }];
+
+                                                return (
+                                                    <div className="space-y-6">
+                                                        {sections.map((sec, secIdx) => (
+                                                            <div key={sec.id || secIdx} className="bg-dark-800 p-4 rounded-2xl border border-dark-600">
+                                                                <div className="flex items-center justify-between mb-4 pb-2 border-b border-dark-700">
+                                                                    <input 
+                                                                        className="bg-transparent font-bold text-brand-500 text-base outline-none w-3/4 placeholder-gray-500" 
+                                                                        value={sec.name} 
+                                                                        placeholder="Nombre del bloque (ej: Movilidad)..."
+                                                                        onChange={(e) => updateSectionName(activeClient.id, activeDayId, sec.id, e.target.value)}
+                                                                    />
+                                                                    {sections.length > 1 && (
+                                                                        <button onClick={() => deleteSection(activeClient.id, activeDayId, sec.id)} className="text-gray-500 hover:text-red-500 transition-colors text-xs px-2 py-1"><i className="fa-solid fa-trash-can"></i> Borrar Bloque</button>
+                                                                    )}
+                                                                </div>
+
+                                                                {sec.exercises.map(ex => (
+                                                                    <ExerciseRow 
+                                                                        key={ex.id} 
+                                                                        exercise={ex} 
+                                                                        clientProgress={globalData.progress?.[activeClient.id]}
+                                                                        onUpdate={(u) => updateExerciseInSection(activeClient.id, activeDayId, sec.id, u)} 
+                                                                        onDelete={() => deleteExerciseFromSection(activeClient.id, activeDayId, sec.id, ex.id)} 
+                                                                    />
+                                                                ))}
+
+                                                                <button onClick={() => addExerciseToSection(activeClient.id, activeDayId, sec.id)} className="w-full bg-dark-700 text-brand-500 font-bold py-3 rounded-xl mt-2 text-sm border border-dark-600 hover:bg-dark-600 transition-colors">
+                                                                    <i className="fa-solid fa-plus mr-2"></i> Agregar ejercicio a este bloque
+                                                                </button>
+                                                            </div>
+                                                        ))}
+
+                                                        <button onClick={() => addSection(activeClient.id, activeDayId)} className="w-full bg-brand-500 text-black font-bold py-4 rounded-xl mt-4 hover:bg-brand-600 transition-colors shadow-lg shadow-brand-500/20">
+                                                            <i className="fa-solid fa-layer-group mr-2"></i> Añadir nuevo bloque o sección
+                                                        </button>
+                                                    </div>
+                                                );
+                                            })()}
                                         </div>
                                     </>
                                 ) : (
@@ -645,21 +807,24 @@
                                         <div className="p-4">
                                             <h3 className="font-bold text-xl mb-4 text-white">Tus plantillas</h3>
                                             <div className="space-y-4">
-                                                {(globalData.routines[activeClient.id] || []).map(day => (
-                                                    <div key={day.id} onClick={() => setActiveDayId(day.id)} className="flex items-center gap-4 cursor-pointer bg-dark-700 p-3 rounded-2xl border border-dark-600 hover:border-brand-500 transition-colors">
-                                                        <div className="w-16 h-16 bg-white rounded-lg shrink-0 flex items-center justify-center text-black">
-                                                            <i className="fa-solid fa-file-lines text-2xl"></i>
+                                                {(globalData.routines[activeClient.id] || []).map(day => {
+                                                    const totalEx = day.sections ? day.sections.reduce((acc, s) => acc + (s.exercises?.length || 0), 0) : (day.exercises?.length || 0);
+                                                    return (
+                                                        <div key={day.id} onClick={() => setActiveDayId(day.id)} className="flex items-center gap-4 cursor-pointer bg-dark-700 p-3 rounded-2xl border border-dark-600 hover:border-brand-500 transition-colors">
+                                                            <div className="w-16 h-16 bg-white rounded-lg shrink-0 flex items-center justify-center text-black">
+                                                                <i className="fa-solid fa-file-lines text-2xl"></i>
+                                                            </div>
+                                                            <div className="flex-1 overflow-hidden">
+                                                                <h4 className="font-bold text-lg text-white truncate lowercase">{day.name}</h4>
+                                                                <p className="text-sm text-gray-500 truncate">{totalEx} ejercicios programados</p>
+                                                            </div>
+                                                            <div className="flex items-center gap-1">
+                                                                <button onClick={(e) => { e.stopPropagation(); cloneDay(activeClient.id, day.id); }} className="text-gray-400 px-3 py-2 hover:text-brand-500 transition-colors"><i className="fa-solid fa-copy"></i></button>
+                                                                <button onClick={(e) => { e.stopPropagation(); deleteDay(activeClient.id, day.id); }} className="text-gray-400 px-3 py-2 hover:text-red-500 transition-colors"><i className="fa-solid fa-trash-can"></i></button>
+                                                            </div>
                                                         </div>
-                                                        <div className="flex-1 overflow-hidden">
-                                                            <h4 className="font-bold text-lg text-white truncate lowercase">{day.name}</h4>
-                                                            <p className="text-sm text-gray-500 truncate">{day.exercises.map(e => e.name).join(', ') || 'Sin ejercicios'}</p>
-                                                        </div>
-                                                        <div className="flex items-center gap-1">
-                                                            <button onClick={(e) => { e.stopPropagation(); cloneDay(activeClient.id, day.id); }} className="text-gray-400 px-3 py-2 hover:text-brand-500 transition-colors"><i className="fa-solid fa-copy"></i></button>
-                                                            <button onClick={(e) => { e.stopPropagation(); deleteDay(activeClient.id, day.id); }} className="text-gray-400 px-3 py-2 hover:text-red-500 transition-colors"><i className="fa-solid fa-trash-can"></i></button>
-                                                        </div>
-                                                    </div>
-                                                ))}
+                                                    );
+                                                })}
                                             </div>
                                             <button onClick={() => addDay(activeClient.id)} className="mt-6 flex items-center justify-center gap-3 text-black font-bold w-full bg-brand-500 p-4 rounded-xl hover:bg-brand-600 transition-colors shadow-lg shadow-brand-500/20">
                                                 <i className="fa-regular fa-folder text-xl"></i> Crear nueva plantilla
@@ -718,18 +883,21 @@
 
                                 <h3 className="font-bold text-xl mb-6 text-white">Tus plantillas</h3>
                                 <div className="space-y-6">
-                                    {(globalData.routines[currentUser.id] || []).map(day => (
-                                        <div key={day.id} onClick={() => {setActiveDayId(day.id); setIsTrainingStarted(false); setView('cliente_entrenamiento');}} className="flex items-center gap-4 cursor-pointer group bg-dark-800 p-3 rounded-2xl border border-transparent hover:border-brand-500/50 transition-all">
-                                            <div className="w-16 h-16 bg-white rounded-xl shrink-0 flex items-center justify-center text-black shadow-lg">
-                                                <i className="fa-solid fa-dumbbell text-2xl"></i>
+                                    {(globalData.routines[currentUser.id] || []).map(day => {
+                                        const totalEx = day.sections ? day.sections.reduce((acc, s) => acc + (s.exercises?.length || 0), 0) : (day.exercises?.length || 0);
+                                        return (
+                                            <div key={day.id} onClick={() => {setActiveDayId(day.id); setIsTrainingStarted(false); setView('cliente_entrenamiento');}} className="flex items-center gap-4 cursor-pointer group bg-dark-800 p-3 rounded-2xl border border-transparent hover:border-brand-500/50 transition-all">
+                                                <div className="w-16 h-16 bg-white rounded-xl shrink-0 flex items-center justify-center text-black shadow-lg">
+                                                    <i className="fa-solid fa-dumbbell text-2xl"></i>
+                                                </div>
+                                                <div className="flex-1 overflow-hidden border-b border-dark-700 pb-3 group-last:border-0 pt-1">
+                                                    <h4 className="font-bold text-lg text-white truncate lowercase">{day.name}</h4>
+                                                    <p className="text-sm text-gray-500 truncate">{totalEx} ejercicios programados</p>
+                                                </div>
+                                                <i className="fa-solid fa-ellipsis-vertical text-gray-600 pr-2"></i>
                                             </div>
-                                            <div className="flex-1 overflow-hidden border-b border-dark-700 pb-3 group-last:border-0 pt-1">
-                                                <h4 className="font-bold text-lg text-white truncate lowercase">{day.name}</h4>
-                                                <p className="text-sm text-gray-500 truncate">{day.exercises.map(e => e.name).join(', ') || 'Sin ejercicios'}</p>
-                                            </div>
-                                            <i className="fa-solid fa-ellipsis-vertical text-gray-600 pr-2"></i>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             </div>
                             
@@ -751,29 +919,38 @@
 
                                 <div className="p-5">
                                     <h2 className="font-black text-4xl lowercase text-white mb-1">{(globalData.routines[currentUser.id]?.find(d => d.id === activeDayId) || {}).name}</h2>
-                                    <p className="text-gray-400 mb-8 font-medium">Semana {activeWeek} • {(globalData.routines[currentUser.id]?.find(d => d.id === activeDayId) || {}).exercises?.length} Ejercicios planificados</p>
+                                    <p className="text-gray-400 mb-8 font-medium">Semana {activeWeek}</p>
 
-                                    <div className="flex justify-between items-center mb-6">
-                                        <h3 className="font-bold text-xl text-white">Lista de Ejercicios</h3>
-                                    </div>
+                                    {(() => {
+                                        const day = globalData.routines[currentUser.id]?.find(d => d.id === activeDayId) || {};
+                                        const sections = day.sections || [{ name: 'Bloque Principal', exercises: day.exercises || [] }];
 
-                                    <div className="space-y-6">
-                                        {(globalData.routines[currentUser.id]?.find(d => d.id === activeDayId) || {}).exercises?.map((ex) => {
-                                            const wCfg = ex.weeks?.[activeWeek] || { sets: ex.sets || '4', reps: ex.reps || '10' };
-                                            return (
-                                                <div key={ex.id} className="flex gap-4 items-center bg-dark-800 p-3 rounded-2xl border border-dark-700">
-                                                    <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center shrink-0 shadow-md">
-                                                        <i className="fa-solid fa-dumbbell text-black text-xl"></i>
+                                        return (
+                                            <div className="space-y-8">
+                                                {sections.map((sec, sIdx) => (
+                                                    <div key={sIdx}>
+                                                        <h3 className="font-bold text-brand-500 text-sm uppercase tracking-wider mb-4 border-b border-dark-700 pb-2">{sec.name}</h3>
+                                                        <div className="space-y-4">
+                                                            {sec.exercises?.map((ex) => {
+                                                                const wCfg = ex.weeks?.[activeWeek] || { sets: ex.sets || '4', reps: ex.reps || '10' };
+                                                                return (
+                                                                    <div key={ex.id} className="flex gap-4 items-center bg-dark-800 p-3 rounded-2xl border border-dark-700">
+                                                                        <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center shrink-0 shadow-md">
+                                                                            <i className="fa-solid fa-dumbbell text-black text-xl"></i>
+                                                                        </div>
+                                                                        <div className="flex-1">
+                                                                            <p className="text-xs text-brand-500 font-bold mb-1 tracking-wider">{wCfg.sets} SERIES x {wCfg.reps} REPS (RIR {ex.rir || '2'})</p>
+                                                                            <p className="font-bold text-white text-base leading-tight">{ex.name}</p>
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
                                                     </div>
-                                                    <div className="flex-1">
-                                                        <p className="text-xs text-brand-500 font-bold mb-1 tracking-wider">{wCfg.sets} SERIES x {wCfg.reps} REPS</p>
-                                                        <p className="font-bold text-white text-base leading-tight">{ex.name}</p>
-                                                    </div>
-                                                    <i className="fa-solid fa-ellipsis-vertical text-gray-600 px-2"></i>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
+                                                ))}
+                                            </div>
+                                        );
+                                    })()}
                                 </div>
 
                                 <div className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-[480px] bg-black/90 backdrop-blur p-5 border-t border-dark-700">
@@ -785,24 +962,46 @@
                         ) : (
                             <div className="app-container pb-20">
                                 <header className="p-4 flex items-center justify-between sticky top-0 bg-black/95 backdrop-blur z-20 border-b border-dark-700 shadow-md">
-                                    <button onClick={() => showToast('Próximamente: Temporizador general')} className="text-brand-500 font-bold flex items-center gap-2 hover:text-white transition-colors"><i className="fa-solid fa-chevron-down"></i> {formatTime(trainingTime)}</button>
+                                    <button onClick={() => showToast('Cronómetro general de sesión')} className="text-brand-500 font-bold flex items-center gap-2 hover:text-white transition-colors"><i className="fa-solid fa-stopwatch"></i> {formatTime(trainingTime)}</button>
                                     <button onClick={() => { setIsTrainingStarted(false); showToast(`¡Entrenamiento finalizado! Tiempo: ${formatTime(trainingTime)}`); setView('cliente_listado'); }} className="bg-dark-700 text-brand-500 px-5 py-2 rounded-xl text-sm font-bold border border-dark-600 hover:bg-dark-600 transition-colors shadow-sm">Terminar</button>
                                 </header>
 
                                 <div className="p-4 pt-6">
-                                    {(globalData.routines[currentUser.id]?.find(d => d.id === activeDayId) || {}).exercises?.map(ex => (
-                                        <ClientExerciseRow 
-                                            key={`${ex.id}-${activeWeek}`} 
-                                            exercise={ex} 
-                                            activeWeek={activeWeek}
-                                            progressData={globalData.progress?.[currentUser.id]?.[activeWeek]?.[ex.id]} 
-                                            previousWeekData={globalData.progress?.[currentUser.id]?.[activeWeek > 1 ? activeWeek - 1 : 1]?.[ex.id]}
-                                            allWeeksData={globalData.progress?.[currentUser.id]}
-                                            onSaveProgress={(setsArray, noteString) => saveClientProgress(ex.id, setsArray, noteString, activeWeek)} 
-                                            onStartRest={startRest}
-                                            showToast={showToast}
-                                        />
-                                    ))}
+                                    {(() => {
+                                        const day = globalData.routines[currentUser.id]?.find(d => d.id === activeDayId) || {};
+                                        const sections = day.sections || [{ name: 'Bloque Principal', exercises: day.exercises || [] }];
+
+                                        return (
+                                            <div className="space-y-8">
+                                                {sections.map((sec, sIdx) => (
+                                                    <div key={sIdx}>
+                                                        <h3 className="font-bold text-brand-500 text-sm uppercase tracking-wider mb-4 border-b border-dark-700 pb-2 flex items-center gap-2">
+                                                            <i className="fa-solid fa-layer-group"></i> {sec.name}
+                                                        </h3>
+                                                        <div className="space-y-6">
+                                                            {sec.exercises?.map(ex => {
+                                                                const safePreviousWeekData = activeWeek > 1 ? globalData.progress?.[currentUser.id]?.[activeWeek - 1]?.[ex.id] : null;
+                                                                
+                                                                return (
+                                                                    <ClientExerciseRow 
+                                                                        key={`${ex.id}-${activeWeek}`} 
+                                                                        exercise={ex} 
+                                                                        activeWeek={activeWeek}
+                                                                        progressData={globalData.progress?.[currentUser.id]?.[activeWeek]?.[ex.id]} 
+                                                                        previousWeekData={safePreviousWeekData}
+                                                                        allWeeksData={globalData.progress?.[currentUser.id]}
+                                                                        onSaveProgress={(setsArray, noteString) => saveClientProgress(ex.id, setsArray, noteString, activeWeek)} 
+                                                                        onStartRest={startRest}
+                                                                        showToast={showToast}
+                                                                    />
+                                                                )
+                                                            })}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        );
+                                    })()}
                                 </div>
 
                                 {/* Cronómetro Flotante */}
