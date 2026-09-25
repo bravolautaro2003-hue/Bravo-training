@@ -86,11 +86,15 @@
         const SUPABASE_KEY = 'sb_publishable_5WHz-KSuu5BaV08EGXJJmg_dkVOUJwy';
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // --- CATÁLOGO DE EJERCICIOS ---
+        // --- CATÁLOGO DE EJERCICIOS (Ampliación y soporte para imágenes) ---
+        // Podés agregarle 'image: "URL_ACA"' a cualquiera de los de abajo
         const EXERCISE_CATALOG = [
-            { name: "Prensa 45° (Máquina)", muscle: "Cuádriceps", equip: "Máquina" },
-            { name: "Prensa Horizontal Tumbado", muscle: "Cuádriceps", equip: "Máquina" },
-            { name: "Sentadilla (Máquina Smith)", muscle: "Glúteos", equip: "Máquina" },
+            // Los 3 primeros tienen imágenes de prueba (links de Unsplash para demostrar)
+            { name: "Prensa 45° (Máquina)", muscle: "Cuádriceps", equip: "Máquina", image: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=150&auto=format&fit=crop" },
+            { name: "Prensa Horizontal Tumbado", muscle: "Cuádriceps", equip: "Máquina", image: "https://images.unsplash.com/photo-1584466977773-e625c37cdd50?q=80&w=150&auto=format&fit=crop" },
+            { name: "Sentadilla (Máquina Smith)", muscle: "Glúteos", equip: "Máquina", image: "https://images.unsplash.com/photo-1574680096145-d05b474e2155?q=80&w=150&auto=format&fit=crop" },
+            
+            // Base inicial
             { name: "Sentadilla A Una Pierna Asistida", muscle: "Cuádriceps", equip: "Peso Corporal" },
             { name: "Sentadilla Barra Alta", muscle: "Cuádriceps", equip: "Barra" },
             { name: "Sentadilla Libre", muscle: "Cuádriceps", equip: "Barra" },
@@ -119,7 +123,49 @@
             { name: "Press Francés", muscle: "Tríceps", equip: "Barra" },
             { name: "Fondos en Paralelas", muscle: "Tríceps", equip: "Peso Corporal" },
             { name: "Crunch Abdominal", muscle: "Abdomen", equip: "Peso Corporal" },
-            { name: "Plancha Isométrica", muscle: "Abdomen", equip: "Peso Corporal" }
+            { name: "Plancha Isométrica", muscle: "Abdomen", equip: "Peso Corporal" },
+            
+            // NUEVO BLOQUE (+40 Ejercicios)
+            { name: "Sentadilla Frontal", muscle: "Cuádriceps", equip: "Barra" },
+            { name: "Zancadas Estáticas", muscle: "Cuádriceps", equip: "Mancuernas" },
+            { name: "Zancadas Caminando", muscle: "Cuádriceps", equip: "Mancuernas" },
+            { name: "Prensa Vertical", muscle: "Cuádriceps", equip: "Máquina" },
+            { name: "Curl Femoral Sentado", muscle: "Isquiosurales", equip: "Máquina" },
+            { name: "Buenos Días", muscle: "Isquiosurales", equip: "Barra" },
+            { name: "Abducción en Máquina", muscle: "Glúteos", equip: "Máquina" },
+            { name: "Aducción en Máquina", muscle: "Aductores", equip: "Máquina" },
+            { name: "Patada de Glúteo", muscle: "Glúteos", equip: "Polea" },
+            { name: "Gemelos en Prensa", muscle: "Gemelos", equip: "Máquina" },
+            { name: "Gemelos Sentado", muscle: "Gemelos", equip: "Máquina" },
+            { name: "Press de Banca Declinado", muscle: "Pecho", equip: "Barra" },
+            { name: "Pullover con Mancuerna", muscle: "Pecho", equip: "Mancuernas" },
+            { name: "Flexiones de Brazos", muscle: "Pecho", equip: "Peso Corporal" },
+            { name: "Aperturas en Peck Deck", muscle: "Pecho", equip: "Máquina" },
+            { name: "Press Convergente", muscle: "Pecho", equip: "Máquina" },
+            { name: "Dominadas Supinas", muscle: "Espalda", equip: "Peso Corporal" },
+            { name: "Remo en Barra T", muscle: "Espalda", equip: "Máquina" },
+            { name: "Remo con Mancuerna a Una Mano", muscle: "Espalda", equip: "Mancuernas" },
+            { name: "Pulldown Brazos Rectos", muscle: "Espalda", equip: "Polea" },
+            { name: "Encogimientos de Hombros", muscle: "Trapecios", equip: "Barra" },
+            { name: "Encogimientos de Hombros (Mancuernas)", muscle: "Trapecios", equip: "Mancuernas" },
+            { name: "Elevaciones Frontales", muscle: "Hombros", equip: "Polea" },
+            { name: "Elevaciones Frontales (Mancuernas)", muscle: "Hombros", equip: "Mancuernas" },
+            { name: "Press Arnold", muscle: "Hombros", equip: "Mancuernas" },
+            { name: "Face Pull", muscle: "Hombros", equip: "Polea" },
+            { name: "Remo al Cuello", muscle: "Hombros", equip: "Barra" },
+            { name: "Curl Predicador", muscle: "Bíceps", equip: "Barra Z" },
+            { name: "Curl Concentrado", muscle: "Bíceps", equip: "Mancuernas" },
+            { name: "Curl Araña", muscle: "Bíceps", equip: "Mancuernas" },
+            { name: "Curl Inverso", muscle: "Antebrazos", equip: "Barra" },
+            { name: "Extensión Tríceps Copa", muscle: "Tríceps", equip: "Mancuernas" },
+            { name: "Extensión Tríceps con Cuerda", muscle: "Tríceps", equip: "Polea" },
+            { name: "Patada de Tríceps (Polea)", muscle: "Tríceps", equip: "Polea" },
+            { name: "Patada de Tríceps (Mancuerna)", muscle: "Tríceps", equip: "Mancuernas" },
+            { name: "Elevación de Piernas Colgado", muscle: "Abdomen", equip: "Peso Corporal" },
+            { name: "Crunch en Polea", muscle: "Abdomen", equip: "Polea" },
+            { name: "Rueda Abdominal", muscle: "Abdomen", equip: "Equipamiento" },
+            { name: "Giros Rusos", muscle: "Abdomen", equip: "Disco" },
+            { name: "Hiperextensiones", muscle: "Espalda Baja", equip: "Silla Romana" }
         ];
 
         let audioCtx = null;
@@ -150,7 +196,7 @@
             } catch(e) { console.log("Audio falló", e); }
         };
 
-        // --- COMPONENTE: MODAL CATÁLOGO ---
+        // --- COMPONENTE: MODAL CATÁLOGO (Ahora soporta renderizar imagen real o ícono) ---
         function ExerciseCatalogModal({ onClose, onSelect }) {
             const [searchTerm, setSearchTerm] = useState('');
             const [muscleFilter, setMuscleFilter] = useState('');
@@ -203,9 +249,16 @@
                             {filteredExercises.map((ex, idx) => (
                                 <div key={idx} onClick={() => onSelect(ex.name)} className="flex items-center justify-between py-3 cursor-pointer hover:bg-white/5 rounded-xl px-2 transition-colors group">
                                     <div className="flex items-center gap-4">
-                                        <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center shrink-0 shadow-md">
-                                            <i className="fa-solid fa-dumbbell text-dark-900 text-xl"></i>
+                                        
+                                        {/* AQUI SE RENDERIZA LA IMAGEN SI EXISTE, SI NO, EL ICONO DE LA MANCUERNA */}
+                                        <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center shrink-0 shadow-md overflow-hidden border border-white/10 group-hover:border-brand-500 transition-colors">
+                                            {ex.image ? (
+                                                <img src={ex.image} alt={ex.name} className="w-full h-full object-cover" />
+                                            ) : (
+                                                <i className="fa-solid fa-dumbbell text-dark-900 text-xl"></i>
+                                            )}
                                         </div>
+
                                         <div>
                                             <h4 className="text-white font-medium text-base leading-tight group-hover:text-brand-500 transition-colors">{ex.name}</h4>
                                             <p className="text-gray-400 text-sm mt-0.5">{ex.muscle}</p>
@@ -465,8 +518,12 @@
                 <div className="mb-10 relative z-10">
                     <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-3">
-                            <div className="w-11 h-11 bg-dark-700 rounded-2xl flex items-center justify-center text-brand-500 shadow-lg border border-white/5">
-                                <i className="fa-solid fa-dumbbell text-lg"></i>
+                            <div className="w-11 h-11 bg-dark-700 rounded-2xl flex items-center justify-center text-brand-500 shadow-lg border border-white/5 overflow-hidden">
+                                {exercise.image ? (
+                                    <img src={exercise.image} alt={exercise.name} className="w-full h-full object-cover" />
+                                ) : (
+                                    <i className="fa-solid fa-dumbbell text-lg"></i>
+                                )}
                             </div>
                             <div>
                                 <h4 className="font-bold text-base text-white leading-tight tracking-wide">{exercise.name}</h4>
@@ -822,6 +879,11 @@
             // Función disparada por el Catálogo
             const handleExerciseSelected = (exerciseName) => {
                 if (!catalogTarget) return;
+                
+                // Buscamos si el ejercicio elegido tiene imagen en el catálogo
+                const catInfo = EXERCISE_CATALOG.find(e => e.name === exerciseName);
+                const imageUrl = catInfo ? catInfo.image : null;
+
                 const { clientId, dayId, secId } = catalogTarget;
                 const newData = structuredClone(globalData);
                 const day = newData.routines[clientId].find(d => d.id === dayId);
@@ -829,7 +891,8 @@
                 
                 sec.exercises.push({ 
                     id: Math.random().toString(36).substr(2, 9), 
-                    name: exerciseName, 
+                    name: exerciseName,
+                    image: imageUrl, // Guardamos la imagen en el ejercicio del usuario
                     sets: '4', reps: '10', rir: '2', rest: '90s', isUnilateral: false, weeks: {} 
                 });
                 
@@ -1108,8 +1171,12 @@
                                                                 const wCfg = ex.weeks?.[activeWeek] || { sets: ex.sets || '4', reps: ex.reps || '10' };
                                                                 return (
                                                                     <div key={ex.id} className="glass-panel p-3.5 rounded-2xl flex gap-3.5 items-center border border-white/5 shadow-sm">
-                                                                        <div className="w-12 h-12 bg-dark-800 rounded-2xl flex items-center justify-center shrink-0 border border-dark-600 text-brand-500">
-                                                                            <i className="fa-solid fa-dumbbell text-base"></i>
+                                                                        <div className="w-12 h-12 bg-dark-800 rounded-2xl flex items-center justify-center shrink-0 border border-dark-600 text-brand-500 overflow-hidden">
+                                                                            {ex.image ? (
+                                                                                <img src={ex.image} alt={ex.name} className="w-full h-full object-cover" />
+                                                                            ) : (
+                                                                                <i className="fa-solid fa-dumbbell text-base"></i>
+                                                                            )}
                                                                         </div>
                                                                         <div className="flex-1 overflow-hidden">
                                                                             <p className="text-[10px] text-brand-500 font-black mb-0.5 tracking-wider uppercase">{wCfg.sets} SERIES x {wCfg.reps} REPS • RIR {ex.rir || '2'}</p>
