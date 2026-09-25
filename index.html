@@ -3,14 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <!-- Meta tags para App Nativa de Apple y Android -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#000000">
     <title>Entrenamiento y Salud</title>
     
-    <!-- Manifiesto inyectado para obligar al celular a detectar una App Instalable -->
     <link rel="manifest" href="data:application/manifest+json;charset=utf-8,%7B%22name%22%3A%22Entrenamiento%20y%20Salud%22%2C%22short_name%22%3A%22Training%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23000000%22%2C%22theme_color%22%3A%22%23000000%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22https%3A%2F%2Fcdn-icons-png.flaticon.com%2F512%2F2936%2F2936886.png%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fpng%22%7D%5D%7D">
     
     <script src="https://cdn.tailwindcss.com"></script>
@@ -21,6 +19,15 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.33.1/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
 
     <script>
+        // Limpiador automático para evitar el error de pantalla negra
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                for(let registration of registrations) {
+                    registration.unregister();
+                }
+            });
+        }
+
         tailwind.config = {
             theme: {
                 extend: {
@@ -53,56 +60,10 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        if ('serviceWorker' in navigator) {
-            const swCode = "self.addEventListener('fetch', function(e) {});";
-            const blob = new Blob([swCode], {type: 'application/javascript'});
-            navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(()=>{});
-        }
-
         const { useState, useEffect, useRef } = React;
         const SUPABASE_URL = 'https://pncnnvbdquzyvcnuethx.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_5WHz-KSuu5BaV08EGXJJmg_dkVOUJwy';
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-        // --- MÉTODOS DE ENTRENAMIENTO PREDEFINIDOS (PERIODIZACIÓN) ---
-        const TRAINING_METHODS = {
-            'hipertrofia_lineal': {
-                name: '📈 Hipertrofia Lineal (Doble Progresión)',
-                weeks: {
-                    1: { sets: '4', reps: '8' },
-                    2: { sets: '4', reps: '8' },
-                    3: { sets: '4', reps: '10' },
-                    4: { sets: '3', reps: '10' } // Deload / Descarga
-                }
-            },
-            'fuerza_onda': {
-                name: '⚡ Fuerza / Onda de Cargas (5x5 -> 5x3)',
-                weeks: {
-                    1: { sets: '5', reps: '5' },
-                    2: { sets: '5', reps: '4' },
-                    3: { sets: '5', reps: '3' },
-                    4: { sets: '3', reps: '5' } // Deload
-                }
-            },
-            'volumen_acumulacion': {
-                name: '🔥 Volumen / Acumulación (Alta Repetición)',
-                weeks: {
-                    1: { sets: '3', reps: '12' },
-                    2: { sets: '4', reps: '12' },
-                    3: { sets: '4', reps: '15' },
-                    4: { sets: '3', reps: '12' } // Deload
-                }
-            },
-            'intensidad_baja_serie': {
-                name: '🎯 Intensificación (Pocas series, alta carga)',
-                weeks: {
-                    1: { sets: '3', reps: '6' },
-                    2: { sets: '3', reps: '5' },
-                    3: { sets: '3', reps: '4' },
-                    4: { sets: '2', reps: '6' } // Deload
-                }
-            }
-        };
 
         const EXERCISE_DB = [
             "Sentadilla Libre (Barra)", "Sentadilla Búlgara", "Sentadilla Hack", "Prensa de Piernas",
@@ -145,26 +106,24 @@
             } catch(e) { console.log("Audio falló", e); }
         };
 
-        // --- COMPONENTE: EDICIÓN DE EJERCICIO (PROFESOR) ---
+        // --- COMPONENTE: EDICIÓN DE EJERCICIO (PROFESOR) CON VARIACIÓN INTERSEMANAL ---
         function ExerciseRow({ exercise, onUpdate, onDelete }) {
             const [localEx, setLocalEx] = useState(exercise);
             const [showSuggestions, setShowSuggestions] = useState(false);
+            const [editWeek, setEditWeek] = useState(1); 
 
             const handleChange = (field, value) => {
                 setLocalEx(prev => ({ ...prev, [field]: value }));
                 if(field === 'name') setShowSuggestions(true);
             };
 
-            // Al cambiar el método, autocompletemos las 4 semanas predeterminadas
-            const handleMethodChange = (methodKey) => {
-                const selectedMethod = TRAINING_METHODS[methodKey];
-                if (!selectedMethod) return;
-
-                const updated = {
-                    ...localEx,
-                    method: methodKey,
-                    weeks: JSON.parse(JSON.stringify(selectedMethod.weeks))
-                };
+            const handleWeekConfigChange = (weekNum, field, value) => {
+                const updatedWeeks = { ...(localEx.weeks || {}) };
+                if (!updatedWeeks[weekNum]) {
+                    updatedWeeks[weekNum] = { sets: localEx.sets || '4', reps: localEx.reps || '10' };
+                }
+                updatedWeeks[weekNum][field] = value;
+                const updated = { ...localEx, weeks: updatedWeeks };
                 setLocalEx(updated);
                 onUpdate(updated);
             };
@@ -188,7 +147,7 @@
                 localEx.name !== ex
             ).slice(0, 5);
 
-            const currentMethod = localEx.method || 'hipertrofia_lineal';
+            const currentWeekData = localEx.weeks?.[editWeek] || { sets: localEx.sets || '4', reps: localEx.reps || '10' };
 
             return (
                 <div className="bg-dark-700 p-4 rounded-xl mb-4 border border-dark-600">
@@ -219,31 +178,33 @@
                         <button onClick={onDelete} className="text-gray-500 hover:text-red-500 transition-colors px-2 py-1"><i className="fa-solid fa-trash-can"></i></button>
                     </div>
 
-                    {/* Selector de Método Predeterminado */}
                     <div className="mb-3 pt-2">
-                        <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Método de Progresión (Mesociclo Automático):</label>
-                        <select 
-                            value={currentMethod} 
-                            onChange={(e) => handleMethodChange(e.target.value)}
-                            className="w-full bg-dark-800 border border-dark-600 text-white text-xs font-semibold rounded-xl p-2.5 outline-none focus:border-brand-500 transition-colors"
-                        >
-                            {Object.entries(TRAINING_METHODS).map(([key, val]) => (
-                                <option key={key} value={key}>{val.name}</option>
-                            ))}
-                        </select>
-                    </div>
+                        <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Programación por Semana:</span>
+                            <div className="flex bg-dark-800 rounded-lg p-0.5 border border-dark-600">
+                                {[1, 2, 3, 4].map(w => (
+                                    <button 
+                                        key={w} 
+                                        type="button"
+                                        onClick={() => setEditWeek(w)} 
+                                        className={`px-2.5 py-1 text-xs font-bold rounded-md transition-all ${editWeek === w ? 'bg-brand-500 text-black' : 'text-gray-400 hover:text-white'}`}
+                                    >
+                                        S{w}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
 
-                    {/* Resumen visual de cómo impacta el método en las semanas */}
-                    <div className="grid grid-cols-4 gap-1.5 mb-3 bg-dark-800 p-2 rounded-xl border border-dark-600 text-center">
-                        {[1, 2, 3, 4].map(w => {
-                            const wData = localEx.weeks?.[w] || TRAINING_METHODS[currentMethod]?.weeks[w] || {sets: '4', reps: '10'};
-                            return (
-                                <div key={w} className="bg-dark-700 p-1 rounded-lg">
-                                    <span className="text-[10px] text-gray-400 block font-bold">Semana {w}</span>
-                                    <span className="text-xs text-brand-500 font-black">{wData.sets}x{wData.reps}</span>
-                                </div>
-                            );
-                        })}
+                        <div className="flex gap-4 text-sm text-gray-300 items-center bg-dark-800 p-2.5 rounded-xl border border-dark-600">
+                            <div className="flex items-center gap-1.5 flex-1">
+                                <span className="text-xs text-gray-400">Series S{editWeek}:</span>
+                                <input className="w-12 bg-dark-600 rounded p-1 text-center text-white font-bold outline-none focus:border focus:border-brand-500" value={currentWeekData.sets} onChange={(e) => handleWeekConfigChange(editWeek, 'sets', e.target.value)} onBlur={handleBlur} />
+                            </div>
+                            <div className="flex items-center gap-1.5 flex-1">
+                                <span className="text-xs text-gray-400">Reps S{editWeek}:</span>
+                                <input className="w-12 bg-dark-600 rounded p-1 text-center text-white font-bold outline-none focus:border focus:border-brand-500" value={currentWeekData.reps} onChange={(e) => handleWeekConfigChange(editWeek, 'reps', e.target.value)} onBlur={handleBlur} />
+                            </div>
+                        </div>
                     </div>
 
                     <div className="flex gap-4 text-sm text-gray-400 items-center overflow-x-auto hide-scrollbar pb-1">
@@ -264,11 +225,7 @@
 
         // --- COMPONENTE: EJECUCIÓN DE EJERCICIO (ALUMNO) ---
         function ClientExerciseRow({ exercise, activeWeek, progressData, previousWeekData, allWeeksData, onSaveProgress, onStartRest, showToast }) {
-            // Resolver las series y reps de la semana según el método predeterminado del ejercicio
-            const methodKey = exercise.method || 'hipertrofia_lineal';
-            const defaultWeekConfig = TRAINING_METHODS[methodKey]?.weeks[activeWeek] || { sets: '4', reps: '10' };
-            const weekConfig = exercise.weeks?.[activeWeek] || defaultWeekConfig;
-
+            const weekConfig = exercise.weeks?.[activeWeek] || { sets: exercise.sets || '4', reps: exercise.reps || '10' };
             const baseSetsCount = parseInt(weekConfig.sets) || 1;
             const isUni = exercise.isUnilateral === true;
             const totalRows = isUni ? baseSetsCount * 2 : baseSetsCount;
@@ -593,18 +550,7 @@
             const addExercise = (clientId, dayId) => {
                 const newData = JSON.parse(JSON.stringify(globalData));
                 const day = newData.routines[clientId].find(d => d.id === dayId);
-                
-                // Por defecto aplicamos el método de hipertrofia lineal
-                const defaultMethod = 'hipertrofia_lineal';
-                day.exercises.push({ 
-                    id: Date.now().toString(), 
-                    name: '', 
-                    method: defaultMethod,
-                    weeks: JSON.parse(JSON.stringify(TRAINING_METHODS[defaultMethod].weeks)),
-                    rir: '2', 
-                    rest: '90s', 
-                    isUnilateral: false 
-                });
+                day.exercises.push({ id: Date.now().toString(), name: '', sets: '4', reps: '10', rir: '2', rest: '90s', isUnilateral: false, weeks: {} });
                 saveData(newData);
             };
 
@@ -813,9 +759,7 @@
 
                                     <div className="space-y-6">
                                         {(globalData.routines[currentUser.id]?.find(d => d.id === activeDayId) || {}).exercises?.map((ex) => {
-                                            const methodKey = ex.method || 'hipertrofia_lineal';
-                                            const defCfg = TRAINING_METHODS[methodKey]?.weeks[activeWeek] || { sets: '4', reps: '10' };
-                                            const wCfg = ex.weeks?.[activeWeek] || defCfg;
+                                            const wCfg = ex.weeks?.[activeWeek] || { sets: ex.sets || '4', reps: ex.reps || '10' };
                                             return (
                                                 <div key={ex.id} className="flex gap-4 items-center bg-dark-800 p-3 rounded-2xl border border-dark-700">
                                                     <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center shrink-0 shadow-md">
@@ -876,7 +820,7 @@
             );
         }
 
-        const root = ReactDOM.createRoot(getElementById('root') || document.getElementById('root'));
+        const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
     </script>
 </body>
