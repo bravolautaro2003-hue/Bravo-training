@@ -35,7 +35,6 @@
                     animation: {
                         'toast-down': 'toastDown 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards',
                         'fade-in': 'fadeIn 0.25s ease-out forwards',
-                        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
                     },
                     keyframes: {
                         toastDown: {
@@ -58,19 +57,6 @@
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         
-        /* Estética de fondo inmersiva con siluetas de pesas */
-        .app-container::before {
-            content: "";
-            position: absolute;
-            top: -50px;
-            right: -50px;
-            width: 250px;
-            height: 250px;
-            background: radial-gradient(circle, rgba(255, 94, 0, 0.08) 0%, rgba(10, 10, 12, 0) 70%);
-            border-radius: 50%;
-            pointer-events: none;
-            z-index: 0;
-        }
         .bg-watermark {
             position: absolute;
             bottom: 10px;
@@ -136,7 +122,6 @@
             } catch(e) { console.log("Audio falló", e); }
         };
 
-        // --- INPUT NATIVO OPTIMIZADO (Escritura veloz sin lag) ---
         function EditableTitle({ initialValue, placeholder, className, onSave }) {
             const inputRef = useRef(null);
 
@@ -163,7 +148,6 @@
             );
         }
 
-        // --- COMPONENTE: EDICIÓN DE EJERCICIO (PROFESOR) ---
         function ExerciseRow({ exercise, clientProgress, onUpdate, onDelete }) {
             const [localEx, setLocalEx] = useState(exercise);
             const [showSuggestions, setShowSuggestions] = useState(false);
@@ -255,7 +239,7 @@
 
                     <div className="mb-3 pt-1">
                         <div className="flex items-center justify-between mb-2">
-                            <span className="text-[10px] font-black text-brand-500 uppercase tracking-widest flex items-center gap-1.5"><i className="fa-solid fa-sliders text-xs"></i> Programación Semanal:</span>
+                            <span className="text-[10px] font-black text-brand-500 uppercase tracking-widest">Programación Semanal:</span>
                             <div className="flex bg-dark-900 rounded-lg p-0.5 border border-dark-600">
                                 {[1, 2, 3, 4].map(w => (
                                     <button 
@@ -319,7 +303,6 @@
             );
         }
 
-        // --- COMPONENTE: EJECUCIÓN DE EJERCICIO (ALUMNO) ---
         function ClientExerciseRow({ exercise, activeWeek, progressData, previousWeekData, allWeeksData, onSaveProgress, onStartRest, showToast }) {
             const weekConfig = exercise.weeks?.[activeWeek] || { sets: exercise.sets || '4', reps: exercise.reps || '10' };
             const baseSetsCount = parseInt(weekConfig.sets) || 1;
@@ -395,6 +378,14 @@
                 handleSetBlur();
             };
 
+            // Función para ajuste rápido de peso (+2.5kg o -2.5kg)
+            const adjustWeight = (index, amount) => {
+                const currentVal = parseFloat(localSets[index].weight) || 0;
+                const newVal = Math.max(0, currentVal + amount);
+                updateSetLocal(index, 'weight', newVal === 0 ? '' : newVal.toString());
+                handleSetBlur();
+            };
+
             return (
                 <div className="mb-10 relative z-10">
                     <div className="flex items-center justify-between mb-4">
@@ -461,10 +452,10 @@
                         </div>
                     )}
                     
-                    <div className="grid grid-cols-[36px_55px_1fr_1fr_45px_42px] gap-1.5 mb-2 text-[10px] text-gray-400 font-black uppercase tracking-widest px-1 text-center">
+                    <div className="grid grid-cols-[36px_55px_1fr_65px_45px_42px] gap-1 mb-2 text-[10px] text-gray-400 font-black uppercase tracking-widest px-1 text-center items-center">
                         <span>Set</span>
                         <span>Previa</span>
-                        <span>KG</span>
+                        <span>KG (±2.5)</span>
                         <span>Reps</span>
                         <span>RIR</span>
                         <span></span>
@@ -489,7 +480,7 @@
                         else if (isUni) badgeStyle = isRight ? "bg-blue-950/60 text-blue-400 border-blue-900" : "bg-emerald-950/60 text-emerald-400 border-emerald-900";
 
                         return (
-                            <div key={i} className="grid grid-cols-[36px_55px_1fr_1fr_45px_42px] gap-1.5 items-center mb-2">
+                            <div key={i} className="grid grid-cols-[36px_55px_1fr_65px_45px_42px] gap-1 items-center mb-2.5">
                                 <button onClick={() => cycleSetType(i)} className={`w-9 h-10 flex items-center justify-center rounded-xl font-black text-xs border cursor-pointer hover:opacity-80 transition-opacity ${badgeStyle}`}>
                                     {badgeText}
                                 </button>
@@ -498,15 +489,19 @@
                                     {prevText}
                                 </div>
 
-                                <input 
-                                    type="text" 
-                                    inputMode="decimal"
-                                    className="w-full bg-dark-800 rounded-xl py-2.5 text-white outline-none text-center font-bold text-sm border border-dark-600 focus:border-brand-500 transition-colors box-border shadow-inner" 
-                                    placeholder="-" 
-                                    value={set.weight} 
-                                    onChange={(e) => updateSetLocal(i, 'weight', e.target.value)} 
-                                    onBlur={handleSetBlur}
-                                />
+                                <div className="flex items-center bg-dark-800 rounded-xl border border-dark-600 focus-within:border-brand-500 overflow-hidden shadow-inner">
+                                    <button onClick={() => adjustWeight(i, -2.5)} className="w-7 h-10 text-gray-400 hover:text-white hover:bg-dark-700 transition-colors text-xs font-bold flex items-center justify-center">-</button>
+                                    <input 
+                                        type="text" 
+                                        inputMode="decimal"
+                                        className="w-full bg-transparent py-2.5 text-white outline-none text-center font-bold text-sm" 
+                                        placeholder="-" 
+                                        value={set.weight} 
+                                        onChange={(e) => updateSetLocal(i, 'weight', e.target.value)} 
+                                        onBlur={handleSetBlur}
+                                    />
+                                    <button onClick={() => adjustWeight(i, 2.5)} className="w-7 h-10 text-gray-400 hover:text-white hover:bg-dark-700 transition-colors text-xs font-bold flex items-center justify-center">+</button>
+                                </div>
                                 
                                 <input 
                                     type="number" 
@@ -645,7 +640,6 @@
                 setPinInput('');
             };
 
-            // PROFESOR
             const addClient = () => {
                 if (!newClientName.trim()) return;
                 const newData = JSON.parse(JSON.stringify(globalData));
@@ -763,7 +757,6 @@
                 saveData(newData);
             };
 
-            // ALUMNO
             const saveClientProgress = (exerciseId, setsArray, noteString, week) => {
                 const newData = JSON.parse(JSON.stringify(globalData));
                 if (!newData.progress[currentUser.id]) newData.progress[currentUser.id] = {};
@@ -793,12 +786,11 @@
                         <div className="app-container flex flex-col justify-between p-6 bg-dark-900 h-screen relative z-10">
                             <div></div>
                             <div className="text-center animate-fade-in my-auto">
-                                <div className="inline-flex justify-center items-center w-28 h-28 bg-dark-800 rounded-3xl border border-brand-500/30 text-brand-500 mb-6 shadow-[0_0_40px_rgba(255,94,0,0.25)] relative">
-                                    <div className="absolute inset-0 rounded-3xl bg-brand-500/10 animate-pulse"></div>
-                                    <i className="fa-solid fa-fire text-4xl relative z-10"></i>
+                                <div className="inline-flex justify-center items-center w-24 h-24 bg-dark-800 rounded-3xl border border-brand-500/30 text-brand-500 mb-6 shadow-[0_0_30px_rgba(255,94,0,0.2)]">
+                                    <i className="fa-solid fa-fire text-4xl"></i>
                                 </div>
                                 <h1 className="text-3xl font-black text-white uppercase tracking-wider mb-1">Entrenamiento</h1>
-                                <h2 className="text-xs font-black text-brand-500 tracking-[0.3em] uppercase">y salud alta gama</h2>
+                                <h2 className="text-lg font-bold text-brand-500 tracking-widest uppercase">y salud</h2>
                             </div>
                             <div className="glass-panel p-6 rounded-3xl shadow-2xl mb-4 border border-white/5">
                                 <input type="password" placeholder="INGRESA TU PIN" className="w-full bg-dark-900 p-4 rounded-2xl text-center text-xl tracking-[0.4em] outline-none mb-4 text-white border border-dark-600 focus:border-brand-500 transition-colors font-bold placeholder:tracking-normal placeholder:font-normal placeholder:text-gray-500 shadow-inner" value={pinInput} onChange={(e) => setPinInput(e.target.value)} />
@@ -908,9 +900,7 @@
                             ) : (
                                 <>
                                     <header className="p-5 flex justify-between items-center glass-header sticky top-0 z-10">
-                                        <h2 className="font-black text-xl text-white uppercase tracking-wider flex items-center gap-2">
-                                            <i className="fa-solid fa-shield-halved text-brand-500 text-sm"></i> Panel Profe
-                                        </h2>
+                                        <h2 className="font-black text-xl text-white uppercase tracking-wider">Panel Profe</h2>
                                         <button onClick={() => setView('home')} className="text-xs font-bold text-gray-400 bg-dark-800 px-4 py-2 rounded-xl hover:text-white transition-colors border border-white/5">Salir</button>
                                     </header>
                                     <div className="p-5 space-y-4">
@@ -938,8 +928,8 @@
                     {view === 'cliente_listado' && (
                         <div className="app-container pb-24 relative z-10">
                             <header className="p-5 flex justify-between items-center sticky top-0 glass-header z-10">
-                                <h1 className="text-sm font-black text-white tracking-widest flex items-center gap-2.5">
-                                    <div className="w-7 h-7 bg-brand-500 rounded-xl flex items-center justify-center text-white text-xs shadow-md shadow-brand-500/40">
+                                <h1 className="text-sm font-black text-white tracking-widest flex items-center gap-2">
+                                    <div className="w-7 h-7 bg-brand-500 rounded-lg flex items-center justify-center text-white text-xs shadow-md shadow-brand-500/40">
                                         <i className="fa-solid fa-fire"></i>
                                     </div>
                                     <span className="uppercase tracking-wider">Entrenamiento & Salud</span>
