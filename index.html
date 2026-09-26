@@ -73,8 +73,8 @@
             transform: rotate(-15deg);
         }
         
-        .glass-panel { background: rgba(22, 22, 28, 0.7); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.06); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37); }
-        .glass-header { background: rgba(10, 10, 12, 0.85); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
+        .glass-panel { background: rgba(22, 22, 28, 0.75); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37); }
+        .glass-header { background: rgba(10, 10, 12, 0.85); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
     </style>
 </head>
 <body class="antialiased">
@@ -331,7 +331,6 @@
             );
         }
 
-        // --- COMPONENTE MODAL DE INFORMACIÓN DEL EJERCICIO ---
         function ExerciseInfoModal({ exercise, isTeacher, onClose, onUpdate }) {
             const [localDesc, setLocalDesc] = useState(exercise.description || '');
             const [localLink, setLocalLink] = useState(exercise.link || '');
@@ -407,14 +406,21 @@
             const [localEx, setLocalEx] = useState(exercise);
             const [editWeek, setEditWeek] = useState(1); 
             const [showInfoModal, setShowInfoModal] = useState(false);
+            
+            const localExRef = useRef(exercise);
 
             useEffect(() => {
                 setLocalEx(exercise);
+                localExRef.current = exercise;
             }, [exercise]);
 
-            const handleChange = (field, value) => {
-                const updated = { ...localEx, [field]: value };
+            const updateLocalAndRef = (updated) => {
                 setLocalEx(updated);
+                localExRef.current = updated;
+            };
+
+            const handleChange = (field, value) => {
+                updateLocalAndRef({ ...localEx, [field]: value });
             };
 
             const handleWeekConfigChange = (weekNum, field, value) => {
@@ -423,15 +429,13 @@
                     updatedWeeks[weekNum] = { sets: localEx.sets || '4', reps: localEx.reps || '10' };
                 }
                 updatedWeeks[weekNum][field] = value;
-                const updated = { ...localEx, weeks: updatedWeeks };
-                setLocalEx(updated);
-                onUpdate(updated);
+                updateLocalAndRef({ ...localEx, weeks: updatedWeeks });
             };
             
             const handleBlur = () => {
                 setTimeout(() => {
-                    onUpdate(localEx);
-                }, 250);
+                    onUpdate(localExRef.current);
+                }, 150);
             };
 
             const currentWeekData = localEx.weeks?.[editWeek] || { sets: localEx.sets || '4', reps: localEx.reps || '10' };
@@ -453,7 +457,7 @@
                             exercise={localEx} 
                             isTeacher={true} 
                             onClose={() => setShowInfoModal(false)}
-                            onUpdate={(updatedEx) => { setLocalEx(updatedEx); onUpdate(updatedEx); }}
+                            onUpdate={(updatedEx) => { updateLocalAndRef(updatedEx); onUpdate(updatedEx); }}
                         />
                     )}
 
@@ -505,7 +509,11 @@
                     </div>
                     
                     <div className="mt-3 pt-3 border-t border-dark-600 flex items-center gap-2.5">
-                        <input type="checkbox" id={`uni-${localEx.id}`} checked={localEx.isUnilateral || false} onChange={(e) => {handleChange('isUnilateral', e.target.checked); handleBlur();}} className="w-4 h-4 accent-brand-500 rounded cursor-pointer" />
+                        <input type="checkbox" id={`uni-${localEx.id}`} checked={localEx.isUnilateral || false} onChange={(e) => {
+                            const updated = { ...localEx, isUnilateral: e.target.checked };
+                            updateLocalAndRef(updated);
+                            onUpdate(updated); 
+                        }} className="w-4 h-4 accent-brand-500 rounded cursor-pointer" />
                         <label htmlFor={`uni-${localEx.id}`} className="text-xs text-gray-300 cursor-pointer select-none font-medium">Ejercicio Unilateral (Separar Izq/Der)</label>
                     </div>
 
@@ -782,7 +790,9 @@
             const [activeWeek, setActiveWeek] = useState(1); 
             const [isTrainingStarted, setIsTrainingStarted] = useState(false);
             const [trainingTime, setTrainingTime] = useState(0);
+            
             const [restTime, setRestTime] = useState(0); 
+            const [restTimerKey, setRestTimerKey] = useState(0); 
             
             const [catalogTarget, setCatalogTarget] = useState(null);
 
@@ -790,6 +800,25 @@
             const showToast = (msg, type = 'info') => {
                 setToast({ msg, type });
                 setTimeout(() => setToast(null), 3000);
+            };
+
+            const mutateAndSave = async (mutationCallback) => {
+                if (!globalData) return;
+                
+                const optimisticData = structuredClone(globalData);
+                mutationCallback(optimisticData);
+                setGlobalData(optimisticData);
+
+                try {
+                    const { data: latest } = await supabase.from('bravo_state').select('data').eq('id', 'main').single();
+                    if (latest && latest.data) {
+                        const freshData = latest.data;
+                        mutationCallback(freshData);
+                        await supabase.from('bravo_state').update({ data: freshData }).eq('id', 'main');
+                    }
+                } catch (e) {
+                    console.error("Error de sincronización:", e);
+                }
             };
 
             useEffect(() => {
@@ -823,24 +852,28 @@
                     }, 1000);
                 }
                 return () => clearInterval(restInterval);
-            }, [restTime]);
+            }, [restTime > 0, restTimerKey]);
 
             const startRest = (timeString) => {
-                if (!timeString) { setRestTime(90); return; }
-                let str = timeString.toLowerCase().trim();
                 let t = 0;
-                if (str.includes(':')) {
-                    const parts = str.split(':');
-                    t = parseInt(parts[0] || 0) * 60 + parseInt(parts[1] || 0);
-                } else if (str.includes('m')) {
-                    const parts = str.split('m');
-                    const m = parseInt(parts[0]) || 0;
-                    const s = parseInt(parts[1]) || 0; 
-                    t = m * 60 + s;
+                if (!timeString) { 
+                    t = 90; 
                 } else {
-                    t = parseInt(str) || 90; 
+                    let str = timeString.toLowerCase().trim();
+                    if (str.includes(':')) {
+                        const parts = str.split(':');
+                        t = parseInt(parts[0] || 0) * 60 + parseInt(parts[1] || 0);
+                    } else if (str.includes('m')) {
+                        const parts = str.split('m');
+                        const m = parseInt(parts[0]) || 0;
+                        const s = parseInt(parts[1]) || 0; 
+                        t = m * 60 + s;
+                    } else {
+                        t = parseInt(str) || 90; 
+                    }
                 }
-                setRestTime(t || 90);
+                setRestTime(t);
+                setRestTimerKey(k => k + 1); 
             };
 
             const formatTime = (secs) => {
@@ -864,14 +897,6 @@
                 setLoading(false);
             };
 
-            const saveData = async (newData) => {
-                setGlobalData(newData);
-                const { error } = await supabase.from('bravo_state').update({ data: newData }).eq('id', 'main');
-                if (error) {
-                    showToast('Error de red al guardar en la nube', 'error');
-                }
-            };
-
             const handleLogin = () => {
                 if (!globalData) return;
                 unlockAudio(); 
@@ -889,97 +914,105 @@
 
             const addClient = () => {
                 if (!newClientName.trim()) return;
-                const newData = structuredClone(globalData);
-                const newClient = { id: Date.now().toString(), name: newClientName, pin: Math.floor(1000 + Math.random() * 9000).toString() };
-                if(!newData.clients) newData.clients = [];
-                if(!newData.routines) newData.routines = {};
-                if(!newData.progress) newData.progress = {};
-                newData.clients.push(newClient);
-                newData.routines[newClient.id] = [];
-                saveData(newData);
+                const newPin = Math.floor(1000 + Math.random() * 9000).toString();
+                const newClient = { id: Date.now().toString(), name: newClientName, pin: newPin };
+                
+                mutateAndSave((freshData) => {
+                    if(!freshData.clients) freshData.clients = [];
+                    if(!freshData.routines) freshData.routines = {};
+                    if(!freshData.progress) freshData.progress = {};
+                    freshData.clients.push(newClient);
+                    freshData.routines[newClient.id] = [];
+                });
+                
                 setNewClientName('');
-                showToast(`¡Alumno creado! PIN: ${newClient.pin}`);
+                showToast(`¡Alumno creado! PIN: ${newPin}`);
             };
 
             const addDay = (clientId) => {
-                const newData = structuredClone(globalData);
                 const newId = Date.now().toString();
-                newData.routines[clientId].push({ 
-                    id: newId, 
-                    name: "Nueva Plantilla", 
-                    sections: [
-                        { id: 'sec_1', name: 'Bloque Principal', exercises: [] }
-                    ] 
+                mutateAndSave((freshData) => {
+                    if(!freshData.routines[clientId]) freshData.routines[clientId] = [];
+                    freshData.routines[clientId].push({ 
+                        id: newId, 
+                        name: "Nueva Plantilla", 
+                        sections: [ { id: 'sec_1', name: 'Bloque Principal', exercises: [] } ] 
+                    });
                 });
-                saveData(newData);
             };
 
             const updateDayName = (clientId, dayId, newName) => {
-                const newData = structuredClone(globalData);
-                const day = newData.routines[clientId].find(d => d.id === dayId);
-                if(day) day.name = newName;
-                saveData(newData);
+                mutateAndSave((freshData) => {
+                    const day = freshData.routines[clientId]?.find(d => d.id === dayId);
+                    if(day) day.name = newName;
+                });
             };
 
             const deleteDay = (clientId, dayId) => {
                 const confirmacion = window.confirm('¿Seguro que querés borrar esta plantilla entera?');
                 if (!confirmacion) return;
-                const newData = structuredClone(globalData);
-                newData.routines[clientId] = newData.routines[clientId].filter(d => d.id !== dayId);
-                saveData(newData);
+                
+                mutateAndSave((freshData) => {
+                    if(freshData.routines[clientId]) {
+                        freshData.routines[clientId] = freshData.routines[clientId].filter(d => d.id !== dayId);
+                    }
+                });
+                
                 setActiveDayId(null);
                 showToast('Plantilla eliminada');
             };
 
             const cloneDay = (clientId, dayId) => {
-                const newData = structuredClone(globalData);
-                const dayToClone = newData.routines[clientId].find(d => d.id === dayId);
-                if (!dayToClone) return;
+                mutateAndSave((freshData) => {
+                    const dayToClone = freshData.routines[clientId]?.find(d => d.id === dayId);
+                    if (!dayToClone) return;
 
-                const clonedSections = (dayToClone.sections || [{ name: 'Bloque Principal', exercises: dayToClone.exercises || [] }]).map(sec => ({
-                    ...sec,
-                    id: Math.random().toString(36).substr(2, 9),
-                    exercises: sec.exercises.map(ex => ({
-                        ...ex,
-                        id: Math.random().toString(36).substr(2, 9)
-                    }))
-                }));
+                    const clonedSections = (dayToClone.sections || [{ name: 'Bloque Principal', exercises: dayToClone.exercises || [] }]).map(sec => ({
+                        ...sec,
+                        id: Math.random().toString(36).substr(2, 9),
+                        exercises: sec.exercises.map(ex => ({
+                            ...ex,
+                            id: Math.random().toString(36).substr(2, 9)
+                        }))
+                    }));
 
-                const newDay = {
-                    id: Date.now().toString(),
-                    name: dayToClone.name + " (Copia)",
-                    sections: clonedSections
-                };
+                    const newDay = {
+                        id: Date.now().toString(),
+                        name: dayToClone.name + " (Copia)",
+                        sections: clonedSections
+                    };
 
-                newData.routines[clientId].push(newDay);
-                saveData(newData);
+                    freshData.routines[clientId].push(newDay);
+                });
                 showToast('Plantilla duplicada con éxito');
             };
 
             const addSection = (clientId, dayId) => {
-                const newData = structuredClone(globalData);
-                const day = newData.routines[clientId].find(d => d.id === dayId);
-                if(!day.sections) day.sections = [];
-                day.sections.push({ id: Math.random().toString(36).substr(2, 9), name: 'Nuevo Bloque', exercises: [] });
-                saveData(newData);
+                mutateAndSave((freshData) => {
+                    const day = freshData.routines[clientId]?.find(d => d.id === dayId);
+                    if(!day) return;
+                    if(!day.sections) day.sections = [];
+                    day.sections.push({ id: Math.random().toString(36).substr(2, 9), name: 'Nuevo Bloque', exercises: [] });
+                });
             };
 
             const updateSectionName = (clientId, dayId, secId, newName) => {
-                const newData = structuredClone(globalData);
-                const day = newData.routines[clientId].find(d => d.id === dayId);
-                const sec = day.sections.find(s => s.id === secId);
-                if(sec) sec.name = newName;
-                saveData(newData);
+                mutateAndSave((freshData) => {
+                    const day = freshData.routines[clientId]?.find(d => d.id === dayId);
+                    const sec = day?.sections?.find(s => s.id === secId);
+                    if(sec) sec.name = newName;
+                });
             };
 
             const deleteSection = (clientId, dayId, secId) => {
-                const newData = structuredClone(globalData);
-                const day = newData.routines[clientId].find(d => d.id === dayId);
-                day.sections = day.sections.filter(s => s.id !== secId);
-                saveData(newData);
+                mutateAndSave((freshData) => {
+                    const day = freshData.routines[clientId]?.find(d => d.id === dayId);
+                    if(day && day.sections) {
+                        day.sections = day.sections.filter(s => s.id !== secId);
+                    }
+                });
             };
 
-            // Función disparada por el Catálogo
             const handleExerciseSelected = (exerciseName) => {
                 if (!catalogTarget) return;
                 
@@ -990,59 +1023,65 @@
                 const equip = catInfo ? catInfo.equip : '';
 
                 const { clientId, dayId, secId } = catalogTarget;
-                const newData = structuredClone(globalData);
-                const day = newData.routines[clientId].find(d => d.id === dayId);
-                const sec = day.sections.find(s => s.id === secId);
                 
-                sec.exercises.push({ 
-                    id: Math.random().toString(36).substr(2, 9), 
-                    name: exerciseName,
-                    image: imageUrl, 
-                    description: description,
-                    muscle: muscle,
-                    equip: equip,
-                    link: '',
-                    sets: '4', reps: '10', rir: '2', rest: '90s', isUnilateral: false, weeks: {} 
+                mutateAndSave((freshData) => {
+                    const day = freshData.routines[clientId]?.find(d => d.id === dayId);
+                    const sec = day?.sections?.find(s => s.id === secId);
+                    
+                    if (sec && sec.exercises) {
+                        sec.exercises.push({ 
+                            id: Math.random().toString(36).substr(2, 9), 
+                            name: exerciseName,
+                            image: imageUrl, 
+                            description: description,
+                            muscle: muscle,
+                            equip: equip,
+                            link: '',
+                            sets: '4', reps: '10', rir: '2', rest: '90s', isUnilateral: false, weeks: {} 
+                        });
+                    }
                 });
-                
-                saveData(newData);
                 setCatalogTarget(null);
             };
 
             const updateExerciseInSection = (clientId, dayId, secId, updatedExercise) => {
-                const newData = structuredClone(globalData);
-                const day = newData.routines[clientId].find(d => d.id === dayId);
-                const sec = day.sections.find(s => s.id === secId);
-                const index = sec.exercises.findIndex(e => e.id === updatedExercise.id);
-                sec.exercises[index] = updatedExercise;
-                saveData(newData);
+                mutateAndSave((freshData) => {
+                    const day = freshData.routines[clientId]?.find(d => d.id === dayId);
+                    const sec = day?.sections?.find(s => s.id === secId);
+                    if (!sec) return;
+                    const index = sec.exercises.findIndex(e => e.id === updatedExercise.id);
+                    if(index !== -1) sec.exercises[index] = updatedExercise;
+                });
             };
 
             const deleteExerciseFromSection = (clientId, dayId, secId, exerciseId) => {
-                const newData = structuredClone(globalData);
-                const day = newData.routines[clientId].find(d => d.id === dayId);
-                const sec = day.sections.find(s => s.id === secId);
-                sec.exercises = sec.exercises.filter(e => e.id !== exerciseId);
-                saveData(newData);
+                mutateAndSave((freshData) => {
+                    const day = freshData.routines[clientId]?.find(d => d.id === dayId);
+                    const sec = day?.sections?.find(s => s.id === secId);
+                    if(sec && sec.exercises) {
+                        sec.exercises = sec.exercises.filter(e => e.id !== exerciseId);
+                    }
+                });
             };
 
             const saveClientProgress = (exerciseId, setsArray, noteString, week) => {
-                const newData = structuredClone(globalData);
-                if (!newData.progress[currentUser.id]) newData.progress[currentUser.id] = {};
-                if (!newData.progress[currentUser.id][week]) newData.progress[currentUser.id][week] = {};
-                if (!newData.progress[currentUser.id][week][exerciseId]) newData.progress[currentUser.id][week][exerciseId] = {};
-                
-                if (setsArray) newData.progress[currentUser.id][week][exerciseId].sets = setsArray;
-                if (noteString !== undefined) newData.progress[currentUser.id][week][exerciseId].note = noteString;
-                
-                saveData(newData);
+                mutateAndSave((freshData) => {
+                    if (!freshData.progress) freshData.progress = {};
+                    if (!freshData.progress[currentUser.id]) freshData.progress[currentUser.id] = {};
+                    if (!freshData.progress[currentUser.id][week]) freshData.progress[currentUser.id][week] = {};
+                    if (!freshData.progress[currentUser.id][week][exerciseId]) freshData.progress[currentUser.id][week][exerciseId] = {};
+                    
+                    if (setsArray) freshData.progress[currentUser.id][week][exerciseId].sets = setsArray;
+                    if (noteString !== undefined) freshData.progress[currentUser.id][week][exerciseId].note = noteString;
+                });
             };
 
             if (loading) return <div className="app-container flex justify-center items-center h-screen bg-dark-900 text-brand-500 text-2xl font-bold"><i className="fa-solid fa-fire fa-spin mr-3"></i> Cargando...</div>;
 
             return (
                 <div className="relative">
-                    <div className="bg-watermark"><i className="fa-solid fa-dumbbell"></i></div>
+                    {/* Fondo genérico de marcas de agua para las pantallas interiores */}
+                    {view !== 'home' && <div className="bg-watermark"><i className="fa-solid fa-dumbbell"></i></div>}
 
                     {catalogTarget && (
                         <ExerciseCatalogModal 
@@ -1058,25 +1097,46 @@
                         </div>
                     )}
 
+                    {/* --- NUEVA PANTALLA DE INICIO (HOME) --- */}
                     {view === 'home' && (
-                        <div className="app-container flex flex-col justify-between p-6 bg-dark-900 h-screen relative z-10">
+                        <div 
+                            className="app-container flex flex-col justify-between p-6 h-screen relative z-10"
+                            style={{ 
+                                backgroundImage: 'linear-gradient(to bottom, rgba(10,10,12,0.3) 0%, rgba(5,5,7,0.95) 100%), url("https://images.unsplash.com/photo-1540497077202-7c8a3999166f?q=80&w=800&auto=format&fit=crop")', 
+                                backgroundSize: 'cover', 
+                                backgroundPosition: 'center' 
+                            }}
+                        >
                             <div></div>
-                            <div className="text-center animate-fade-in my-auto">
-                                <div className="inline-flex justify-center items-center w-24 h-24 bg-dark-800 rounded-3xl border border-brand-500/30 text-brand-500 mb-6 shadow-[0_0_30px_rgba(255,94,0,0.2)]">
-                                    <i className="fa-solid fa-fire text-4xl"></i>
+                            <div className="text-center animate-fade-in my-auto relative z-20">
+                                {/* Nuevo Isotipo (Logo) */}
+                                <div className="inline-flex justify-center items-center w-28 h-28 bg-gradient-to-br from-dark-800 to-dark-950 rounded-[2rem] border-2 border-brand-500/40 text-brand-500 mb-8 shadow-[0_0_40px_rgba(255,94,0,0.4)] relative overflow-hidden transform rotate-3">
+                                    <div className="absolute inset-0 bg-brand-500/10 backdrop-blur-md"></div>
+                                    <i className="fa-solid fa-dumbbell text-5xl relative z-10 drop-shadow-[0_0_15px_rgba(255,94,0,0.8)] -rotate-3"></i>
                                 </div>
-                                <h1 className="text-3xl font-black text-white uppercase tracking-wider mb-1">Entrenamiento</h1>
-                                <h2 className="text-lg font-bold text-brand-500 tracking-widest uppercase">y salud</h2>
+                                
+                                <h1 className="text-4xl font-black text-white uppercase tracking-tighter mb-0.5 drop-shadow-lg">Entrenamiento</h1>
+                                <h2 className="text-xl font-bold text-brand-500 tracking-[0.2em] uppercase drop-shadow-md">Y Salud</h2>
+                                <p className="text-[10px] text-gray-300 font-black tracking-widest mt-4 uppercase border-t border-white/20 pt-4 mx-auto w-3/4 opacity-90">Rendimiento & Biomecánica</p>
                             </div>
-                            <div className="glass-panel p-6 rounded-3xl shadow-2xl mb-4 border border-white/5">
-                                <input type="password" placeholder="INGRESA TU PIN" className="w-full bg-dark-900 p-4 rounded-2xl text-center text-xl tracking-[0.4em] outline-none mb-4 text-white border border-dark-600 focus:border-brand-500 transition-colors font-bold placeholder:tracking-normal placeholder:font-normal placeholder:text-gray-500 shadow-inner" value={pinInput} onChange={(e) => setPinInput(e.target.value)} />
-                                <button onClick={handleLogin} className="w-full bg-brand-500 text-white py-4 rounded-2xl font-black text-base hover:bg-brand-600 transition-all shadow-lg shadow-brand-500/30 uppercase tracking-wider">Entrar</button>
+                            
+                            <div className="glass-panel p-6 rounded-[2rem] shadow-2xl mb-6 relative z-20">
+                                <input 
+                                    type="password" 
+                                    placeholder="INGRESA TU PIN" 
+                                    className="w-full bg-dark-950/50 p-4 rounded-2xl text-center text-xl tracking-[0.4em] outline-none mb-4 text-white border border-white/10 focus:border-brand-500 transition-colors font-bold placeholder:tracking-normal placeholder:font-normal placeholder:text-gray-400 shadow-inner backdrop-blur-sm" 
+                                    value={pinInput} 
+                                    onChange={(e) => setPinInput(e.target.value)} 
+                                />
+                                <button onClick={handleLogin} className="w-full bg-gradient-to-r from-brand-500 to-brand-600 text-white py-4 rounded-2xl font-black text-sm hover:from-brand-600 hover:to-brand-700 transition-all shadow-lg shadow-brand-500/40 uppercase tracking-widest">
+                                    Ingresar
+                                </button>
                             </div>
                         </div>
                     )}
 
                     {view === 'profesor' && (
-                        <div className="app-container pb-20 relative z-10">
+                        <div className="app-container pb-20 relative z-10 bg-dark-900">
                             {activeClient ? (
                                 activeDayId && globalData.routines[activeClient.id]?.find(d => d.id === activeDayId) ? (
                                     <>
@@ -1202,13 +1262,17 @@
                     )}
 
                     {view === 'cliente_listado' && (
-                        <div className="app-container pb-24 relative z-10">
+                        <div className="app-container pb-24 relative z-10 bg-dark-900">
                             <header className="p-5 flex justify-between items-center sticky top-0 glass-header z-10">
-                                <h1 className="text-sm font-black text-white tracking-widest flex items-center gap-2">
-                                    <div className="w-7 h-7 bg-brand-500 rounded-lg flex items-center justify-center text-white text-xs shadow-md shadow-brand-500/40">
-                                        <i className="fa-solid fa-fire"></i>
+                                <h1 className="text-sm font-black text-white tracking-widest flex items-center gap-3">
+                                    {/* Logo miniatura adaptado al nuevo estilo */}
+                                    <div className="w-8 h-8 bg-gradient-to-br from-brand-500 to-brand-600 rounded-lg flex items-center justify-center text-white text-[10px] shadow-[0_0_15px_rgba(255,94,0,0.4)] border border-white/20 transform rotate-3">
+                                        <i className="fa-solid fa-dumbbell -rotate-3"></i>
                                     </div>
-                                    <span className="uppercase tracking-wider">Entrenamiento & Salud</span>
+                                    <div className="flex flex-col leading-none">
+                                        <span className="uppercase tracking-wider text-[11px]">Entrenamiento</span>
+                                        <span className="text-brand-500 text-[9px] font-bold uppercase tracking-widest mt-0.5">Y Salud</span>
+                                    </div>
                                 </h1>
                                 <button onClick={() => setView('home')} className="text-white bg-dark-800 px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-sm border border-white/5">Salir</button>
                             </header>
@@ -1256,7 +1320,7 @@
 
                     {view === 'cliente_entrenamiento' && (
                         !isTrainingStarted ? (
-                            <div className="app-container pb-24 relative z-10">
+                            <div className="app-container pb-24 relative z-10 bg-dark-900">
                                 <header className="p-4 flex items-center justify-between sticky top-0 glass-header z-10">
                                     <button onClick={() => setView('cliente_listado')} className="text-brand-500 w-10 h-10 flex items-center justify-center hover:text-white transition-colors bg-dark-800 rounded-xl border border-white/5"><i className="fa-solid fa-arrow-left text-base"></i></button>
                                     <button onClick={() => showToast('Próximamente: IA adaptativa')} className="bg-dark-800 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 border border-white/5 hover:border-brand-500 transition-colors"><i className="fa-solid fa-wand-magic-sparkles text-brand-500"></i> Adaptar</button>
@@ -1309,7 +1373,7 @@
                                 </div>
                             </div>
                         ) : (
-                            <div className="app-container pb-20 relative z-10">
+                            <div className="app-container pb-20 relative z-10 bg-dark-900">
                                 <header className="p-4 flex items-center justify-between sticky top-0 glass-header z-20 shadow-md">
                                     <button onClick={() => showToast('Sesión en curso')} className="text-brand-500 text-xs font-black uppercase tracking-wider flex items-center gap-2 bg-dark-800 px-3.5 py-2 rounded-xl border border-white/5"><i className="fa-solid fa-stopwatch animate-pulse"></i> {formatTime(trainingTime)}</button>
                                     <button onClick={() => { setIsTrainingStarted(false); showToast(`¡Entrenamiento finalizado! Tiempo: ${formatTime(trainingTime)}`); setView('cliente_listado'); }} className="bg-dark-800 text-brand-500 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider border border-white/5 hover:bg-dark-700 transition-colors">Terminar</button>
@@ -1353,7 +1417,6 @@
                                     })()}
                                 </div>
 
-                                {/* Cronómetro Flotante */}
                                 {restTime > 0 && (
                                     <div className="fixed bottom-16 left-1/2 transform -translate-x-1/2 bg-brand-500 text-white px-6 py-3 rounded-2xl font-black text-sm tracking-wider shadow-[0_0_25px_rgba(255,94,0,0.6)] flex items-center gap-3 z-50 animate-bounce cursor-pointer uppercase border border-white/20" onClick={() => setRestTime(0)}>
                                         <i className="fa-solid fa-stopwatch animate-pulse text-lg"></i>
