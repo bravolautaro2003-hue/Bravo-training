@@ -401,7 +401,7 @@
             );
         }
 
-        function ExerciseRow({ exercise, clientProgress, onUpdate, onDelete }) {
+        function ExerciseRow({ exercise, clientProgress, onUpdate, onDelete, onMoveUp, onMoveDown, isFirst, isLast }) {
             const [localEx, setLocalEx] = useState(exercise);
             const [editWeek, setEditWeek] = useState(1); 
             const [showInfoModal, setShowInfoModal] = useState(false);
@@ -461,7 +461,7 @@
                     )}
 
                     <div className="flex justify-between items-start mb-3 relative">
-                        <div className="w-5/6 relative flex items-center">
+                        <div className="w-4/6 relative flex items-center">
                             <input 
                                 className="bg-transparent font-bold text-lg outline-none w-full text-white placeholder-gray-500 tracking-wide" 
                                 value={localEx.name} 
@@ -470,9 +470,11 @@
                                 placeholder="Nombre del ejercicio" 
                             />
                         </div>
-                        <div className="flex items-center gap-1">
-                            <button onClick={() => setShowInfoModal(true)} className="text-brand-500 hover:text-white transition-colors px-2 py-1"><i className="fa-solid fa-circle-info text-lg"></i></button>
-                            <button onClick={onDelete} className="text-gray-500 hover:text-red-400 transition-colors px-2 py-1"><i className="fa-solid fa-trash-can"></i></button>
+                        <div className="flex items-center gap-0.5">
+                            <button onClick={onMoveUp} disabled={isFirst} className={`px-1.5 py-1 text-xs ${isFirst ? 'text-gray-700 cursor-not-allowed' : 'text-gray-400 hover:text-white'}`} title="Mover arriba"><i className="fa-solid fa-arrow-up"></i></button>
+                            <button onClick={onMoveDown} disabled={isLast} className={`px-1.5 py-1 text-xs ${isLast ? 'text-gray-700 cursor-not-allowed' : 'text-gray-400 hover:text-white'}`} title="Mover abajo"><i className="fa-solid fa-arrow-down"></i></button>
+                            <button onClick={() => setShowInfoModal(true)} className="text-brand-500 hover:text-white transition-colors px-1.5 py-1"><i className="fa-solid fa-circle-info text-base"></i></button>
+                            <button onClick={onDelete} className="text-gray-500 hover:text-red-400 transition-colors px-1.5 py-1"><i className="fa-solid fa-trash-can"></i></button>
                         </div>
                     </div>
 
@@ -803,14 +805,11 @@
 
             const mutateAndSave = async (mutationCallback) => {
                 try {
-                    // 1. Descargamos la versión más fresca del servidor antes de mutar
                     const { data: latest } = await supabase.from('bravo_state').select('data').eq('id', 'main').single();
                     const freshData = (latest && latest.data) ? latest.data : (globalData || { profesorPin: '0000', clients: [], routines: {}, progress: {} });
                     
-                    // 2. Aplicamos la mutación sobre la data fresca
                     mutationCallback(freshData);
                     
-                    // 3. Actualizamos en Supabase y sincronizamos el estado local simultáneamente
                     const { error } = await supabase.from('bravo_state').update({ data: freshData }).eq('id', 'main');
                     if (error) throw error;
 
@@ -823,7 +822,6 @@
 
             useEffect(() => {
                 fetchData();
-                // Suscripción en tiempo real optimizada para múltiples profesores/alumnos concurrentes
                 const channel = supabase.channel('realtime_sync').on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'bravo_state' }, (payload) => {
                     if (payload && payload.new && payload.new.data) {
                         setGlobalData(payload.new.data);
@@ -950,6 +948,34 @@
                 showToast(`¡Alumno creado! PIN: ${newPin}`);
             };
 
+            const updateClientName = (clientId, newName) => {
+                if (!newName.trim()) return;
+                mutateAndSave((freshData) => {
+                    const client = freshData.clients?.find(c => c.id === clientId);
+                    if (client) client.name = newName;
+                });
+                showToast('Nombre actualizado');
+            };
+
+            const deleteClient = (clientId) => {
+                const confirmacion = window.confirm('¿Seguro que querés eliminar este alumno, sus rutinas y su progreso?');
+                if (!confirmacion) return;
+
+                mutateAndSave((freshData) => {
+                    if (freshData.clients) {
+                        freshData.clients = freshData.clients.filter(c => c.id !== clientId);
+                    }
+                    if (freshData.routines) {
+                        delete freshData.routines[clientId];
+                    }
+                    if (freshData.progress) {
+                        delete freshData.progress[clientId];
+                    }
+                });
+                setActiveClient(null);
+                showToast('Alumno eliminado');
+            };
+
             const addDay = (clientId) => {
                 const newId = Date.now().toString();
                 mutateAndSave((freshData) => {
@@ -1031,6 +1057,21 @@
                     if(day && day.sections) {
                         day.sections = day.sections.filter(s => s.id !== secId);
                     }
+                });
+            };
+
+            const moveExercise = (clientId, dayId, secId, index, direction) => {
+                mutateAndSave((freshData) => {
+                    const day = freshData.routines[clientId]?.find(d => d.id === dayId);
+                    const sec = day?.sections?.find(s => s.id === secId);
+                    if (!sec || !sec.exercises) return;
+                    
+                    const newIndex = index + direction;
+                    if (newIndex < 0 || newIndex >= sec.exercises.length) return;
+                    
+                    const temp = sec.exercises[index];
+                    sec.exercises[index] = sec.exercises[newIndex];
+                    sec.exercises[newIndex] = temp;
                 });
             };
 
@@ -1192,13 +1233,17 @@
                                                                     )}
                                                                 </div>
 
-                                                                {sec.exercises.map(ex => (
+                                                                {sec.exercises.map((ex, exIdx) => (
                                                                     <ExerciseRow 
                                                                         key={ex.id} 
                                                                         exercise={ex} 
                                                                         clientProgress={globalData.progress?.[activeClient.id]}
                                                                         onUpdate={(u) => updateExerciseInSection(activeClient.id, activeDayId, sec.id, u)} 
-                                                                        onDelete={() => deleteExerciseFromSection(activeClient.id, activeDayId, sec.id, ex.id)} 
+                                                                        onDelete={() => deleteExerciseFromSection(activeClient.id, activeDayId, sec.id, ex.id)}
+                                                                        onMoveUp={() => moveExercise(activeClient.id, activeDayId, sec.id, exIdx, -1)}
+                                                                        onMoveDown={() => moveExercise(activeClient.id, activeDayId, sec.id, exIdx, 1)}
+                                                                        isFirst={exIdx === 0}
+                                                                        isLast={exIdx === sec.exercises.length - 1}
                                                                     />
                                                                 ))}
 
@@ -1220,8 +1265,15 @@
                                     <>
                                         <header className="p-4 flex items-center justify-between sticky top-0 glass-header z-10">
                                             <button onClick={() => setActiveClient(null)} className="text-brand-500 w-10 h-10 flex items-center justify-center hover:text-white transition-colors bg-dark-800 rounded-xl border border-white/5"><i className="fa-solid fa-arrow-left text-base"></i></button>
-                                            <h2 className="font-bold text-base text-white tracking-wide">{activeClient.name}</h2>
-                                            <div className="w-10"></div>
+                                            <div className="flex-1 px-3">
+                                                <EditableTitle 
+                                                    initialValue={activeClient.name}
+                                                    placeholder="Nombre del alumno..."
+                                                    className="font-bold text-base text-white bg-transparent outline-none w-full border-b border-transparent focus:border-brand-500 transition-colors"
+                                                    onSave={(val) => updateClientName(activeClient.id, val)}
+                                                />
+                                            </div>
+                                            <button onClick={() => deleteClient(activeClient.id)} className="text-gray-500 hover:text-red-400 p-2 transition-colors" title="Eliminar alumno"><i className="fa-solid fa-trash-can"></i></button>
                                         </header>
                                         
                                         <div className="p-4">
@@ -1259,21 +1311,41 @@
                                         <button onClick={() => setView('home')} className="text-xs font-bold text-gray-400 bg-dark-800 px-4 py-2 rounded-xl hover:text-white transition-colors border border-white/5">Salir</button>
                                     </header>
                                     <div className="p-5 space-y-4">
+                                        {/* Dashboard y Estadísticas Rápidas */}
+                                        <div className="grid grid-cols-2 gap-3 mb-2">
+                                            <div className="glass-panel p-4 rounded-2xl border border-white/5 text-center">
+                                                <p className="text-2xl font-black text-brand-500">{globalData.clients?.length || 0}</p>
+                                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-0.5">Alumnos Activos</p>
+                                            </div>
+                                            <div className="glass-panel p-4 rounded-2xl border border-white/5 text-center">
+                                                <p className="text-2xl font-black text-white">
+                                                    {Object.values(globalData.routines || {}).reduce((acc, rList) => acc + (rList?.length || 0), 0)}
+                                                </p>
+                                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-0.5">Plantillas Totales</p>
+                                            </div>
+                                        </div>
+
                                         <div className="flex gap-2 bg-dark-800/80 p-2 rounded-2xl border border-white/5 shadow-inner mb-6">
                                             <input className="flex-1 bg-transparent px-4 outline-none text-sm text-white placeholder-gray-500 font-medium" placeholder="Nuevo alumno..." value={newClientName} onChange={(e) => setNewClientName(e.target.value)} />
                                             <button onClick={addClient} className="bg-brand-500 rounded-xl w-11 h-11 flex items-center justify-center text-white hover:bg-brand-600 transition-colors shadow-md shadow-brand-500/30 font-bold"><i className="fa-solid fa-plus"></i></button>
                                         </div>
 
                                         <h3 className="font-black text-xs text-gray-400 uppercase tracking-widest mb-2">Listado de Alumnos</h3>
-                                        {globalData.clients?.map(client => (
-                                            <div key={client.id} onClick={() => setActiveClient(client)} className="glass-panel p-4 rounded-2xl flex justify-between items-center cursor-pointer hover:border-brand-500/50 transition-all shadow-md border border-white/5">
-                                                <div>
-                                                    <p className="font-bold text-base text-white">{client.name}</p>
-                                                    <p className="text-xs text-brand-500 mt-1 font-semibold"><i className="fa-solid fa-key mr-1"></i> PIN: {client.pin}</p>
+                                        {globalData.clients?.map(client => {
+                                            const routinesCount = (globalData.routines?.[client.id] || []).length;
+                                            return (
+                                                <div key={client.id} onClick={() => setActiveClient(client)} className="glass-panel p-4 rounded-2xl flex justify-between items-center cursor-pointer hover:border-brand-500/50 transition-all shadow-md border border-white/5">
+                                                    <div>
+                                                        <p className="font-bold text-base text-white">{client.name}</p>
+                                                        <div className="flex items-center gap-3 mt-1">
+                                                            <p className="text-xs text-brand-500 font-semibold"><i className="fa-solid fa-key mr-1"></i> PIN: {client.pin}</p>
+                                                            <span className="text-xs text-gray-400">• {routinesCount} {routinesCount === 1 ? 'rutina' : 'rutinas'}</span>
+                                                        </div>
+                                                    </div>
+                                                    <i className="fa-solid fa-chevron-right text-gray-500 text-sm"></i>
                                                 </div>
-                                                <i className="fa-solid fa-chevron-right text-gray-500 text-sm"></i>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 </>
                             )}
