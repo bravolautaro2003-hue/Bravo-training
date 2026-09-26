@@ -802,28 +802,32 @@
             };
 
             const mutateAndSave = async (mutationCallback) => {
-                if (!globalData) return;
-                
-                const optimisticData = structuredClone(globalData);
-                mutationCallback(optimisticData);
-                setGlobalData(optimisticData);
-
                 try {
+                    // 1. Descargamos la versión más fresca del servidor antes de mutar
                     const { data: latest } = await supabase.from('bravo_state').select('data').eq('id', 'main').single();
-                    if (latest && latest.data) {
-                        const freshData = latest.data;
-                        mutationCallback(freshData);
-                        await supabase.from('bravo_state').update({ data: freshData }).eq('id', 'main');
-                    }
+                    const freshData = (latest && latest.data) ? latest.data : (globalData || { profesorPin: '0000', clients: [], routines: {}, progress: {} });
+                    
+                    // 2. Aplicamos la mutación sobre la data fresca
+                    mutationCallback(freshData);
+                    
+                    // 3. Actualizamos en Supabase y sincronizamos el estado local simultáneamente
+                    const { error } = await supabase.from('bravo_state').update({ data: freshData }).eq('id', 'main');
+                    if (error) throw error;
+
+                    setGlobalData(structuredClone(freshData));
                 } catch (e) {
-                    console.error("Error de sincronización:", e);
+                    console.error("Error en mutación atómica multi-usuario:", e);
+                    showToast('Error de sincronización en red', 'error');
                 }
             };
 
             useEffect(() => {
                 fetchData();
+                // Suscripción en tiempo real optimizada para múltiples profesores/alumnos concurrentes
                 const channel = supabase.channel('realtime_sync').on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'bravo_state' }, (payload) => {
-                    if(payload && payload.new) setGlobalData(payload.new.data);
+                    if (payload && payload.new && payload.new.data) {
+                        setGlobalData(payload.new.data);
+                    }
                 }).subscribe();
                 return () => { supabase.removeChannel(channel); };
             }, []);
@@ -896,17 +900,35 @@
                 setLoading(false);
             };
 
-            const handleLogin = () => {
-                if (!globalData) return;
-                unlockAudio(); 
+            const handleLogin = async () => {
+                unlockAudio();
                 
-                if (pinInput === globalData.profesorPin) { setView('profesor'); } 
-                else {
-                    const client = globalData.clients?.find(c => c.pin === pinInput);
-                    if (client) { 
-                        setCurrentUser(client); 
-                        setView('cliente_listado'); 
-                    } else { showToast('PIN incorrecto. Revisalo bien.', 'error'); }
+                try {
+                    const { data: latest } = await supabase.from('bravo_state').select('data').eq('id', 'main').single();
+                    const currentDbData = (latest && latest.data) ? latest.data : globalData;
+                    
+                    if (!currentDbData) {
+                        showToast('Error de conexión. Intentá de nuevo.', 'error');
+                        return;
+                    }
+
+                    setGlobalData(currentDbData);
+                    const cleanPin = pinInput.trim();
+
+                    if (cleanPin === currentDbData.profesorPin) { 
+                        setView('profesor'); 
+                    } else {
+                        const client = currentDbData.clients?.find(c => c.pin === cleanPin);
+                        if (client) { 
+                            setCurrentUser(client); 
+                            setView('cliente_listado'); 
+                        } else { 
+                            showToast('PIN incorrecto. Revisalo bien.', 'error'); 
+                        }
+                    }
+                } catch (e) {
+                    console.error("Error en login:", e);
+                    showToast('Error al validar el PIN.', 'error');
                 }
                 setPinInput('');
             };
@@ -1122,7 +1144,8 @@
                                     placeholder="INGRESA TU PIN" 
                                     className="w-full bg-dark-950/50 p-4 rounded-2xl text-center text-xl tracking-[0.4em] outline-none mb-4 text-white border border-white/10 focus:border-brand-500 transition-colors font-bold placeholder:tracking-normal placeholder:font-normal placeholder:text-gray-400 shadow-inner backdrop-blur-sm" 
                                     value={pinInput} 
-                                    onChange={(e) => setPinInput(e.target.value)} 
+                                    onChange={(e) => setPinInput(e.target.value)}
+                                    onKeyDown={(e) => { if (e.key === 'Enter') handleLogin(); }}
                                 />
                                 <button onClick={handleLogin} className="w-full bg-gradient-to-r from-brand-500 to-brand-600 text-white py-4 rounded-2xl font-black text-sm hover:from-brand-600 hover:to-brand-700 transition-all shadow-lg shadow-brand-500/40 uppercase tracking-widest">
                                     Ingresar
