@@ -461,7 +461,7 @@
                     )}
 
                     <div className="flex justify-between items-start mb-3 relative">
-                        <div className="w-4/6 relative flex items-center">
+                        <div className="w-1/2 relative flex items-center">
                             <input 
                                 className="bg-transparent font-bold text-lg outline-none w-full text-white placeholder-gray-500 tracking-wide" 
                                 value={localEx.name} 
@@ -470,11 +470,12 @@
                                 placeholder="Nombre del ejercicio" 
                             />
                         </div>
-                        <div className="flex items-center gap-0.5">
-                            <button onClick={onMoveUp} disabled={isFirst} className={`px-1.5 py-1 text-xs ${isFirst ? 'text-gray-700 cursor-not-allowed' : 'text-gray-400 hover:text-white'}`} title="Mover arriba"><i className="fa-solid fa-arrow-up"></i></button>
-                            <button onClick={onMoveDown} disabled={isLast} className={`px-1.5 py-1 text-xs ${isLast ? 'text-gray-700 cursor-not-allowed' : 'text-gray-400 hover:text-white'}`} title="Mover abajo"><i className="fa-solid fa-arrow-down"></i></button>
-                            <button onClick={() => setShowInfoModal(true)} className="text-brand-500 hover:text-white transition-colors px-1.5 py-1"><i className="fa-solid fa-circle-info text-base"></i></button>
-                            <button onClick={onDelete} className="text-gray-500 hover:text-red-400 transition-colors px-1.5 py-1"><i className="fa-solid fa-trash-can"></i></button>
+                        <div className="flex items-center gap-1 bg-dark-800/80 p-1 rounded-xl border border-white/5">
+                            <button type="button" onClick={(e) => { e.stopPropagation(); onMoveUp(); }} disabled={isFirst} className={`w-8 h-8 flex items-center justify-center rounded-lg text-xs transition-colors ${isFirst ? 'text-dark-600 cursor-not-allowed' : 'text-gray-400 hover:text-white hover:bg-dark-700'}`} title="Mover arriba"><i className="fa-solid fa-arrow-up"></i></button>
+                            <button type="button" onClick={(e) => { e.stopPropagation(); onMoveDown(); }} disabled={isLast} className={`w-8 h-8 flex items-center justify-center rounded-lg text-xs transition-colors ${isLast ? 'text-dark-600 cursor-not-allowed' : 'text-gray-400 hover:text-white hover:bg-dark-700'}`} title="Mover abajo"><i className="fa-solid fa-arrow-down"></i></button>
+                            <div className="w-px h-4 bg-dark-600 mx-1"></div>
+                            <button type="button" onClick={(e) => { e.stopPropagation(); setShowInfoModal(true); }} className="w-8 h-8 flex items-center justify-center text-brand-500 hover:text-white transition-colors rounded-lg hover:bg-dark-700"><i className="fa-solid fa-circle-info text-base"></i></button>
+                            <button type="button" onClick={(e) => { e.stopPropagation(); onDelete(); }} className="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-red-400 transition-colors rounded-lg hover:bg-dark-700"><i className="fa-solid fa-trash-can"></i></button>
                         </div>
                     </div>
 
@@ -954,26 +955,25 @@
                     const client = freshData.clients?.find(c => c.id === clientId);
                     if (client) client.name = newName;
                 });
-                showToast('Nombre actualizado');
+                showToast('Nombre actualizado exitosamente');
             };
 
             const deleteClient = (clientId) => {
-                const confirmacion = window.confirm('¿Seguro que querés eliminar este alumno, sus rutinas y su progreso?');
+                const confirmacion = window.confirm('¿Seguro que querés eliminar a este alumno de forma permanente? Se borrarán sus rutinas y progreso.');
                 if (!confirmacion) return;
 
                 mutateAndSave((freshData) => {
                     if (freshData.clients) {
                         freshData.clients = freshData.clients.filter(c => c.id !== clientId);
                     }
-                    if (freshData.routines) {
+                    if (freshData.routines && freshData.routines[clientId]) {
                         delete freshData.routines[clientId];
                     }
-                    if (freshData.progress) {
+                    if (freshData.progress && freshData.progress[clientId]) {
                         delete freshData.progress[clientId];
                     }
                 });
-                setActiveClient(null);
-                showToast('Alumno eliminado');
+                showToast('Alumno eliminado correctamente');
             };
 
             const addDay = (clientId) => {
@@ -1069,9 +1069,12 @@
                     const newIndex = index + direction;
                     if (newIndex < 0 || newIndex >= sec.exercises.length) return;
                     
-                    const temp = sec.exercises[index];
-                    sec.exercises[index] = sec.exercises[newIndex];
-                    sec.exercises[newIndex] = temp;
+                    const newEx = [...sec.exercises];
+                    const temp = newEx[index];
+                    newEx[index] = newEx[newIndex];
+                    newEx[newIndex] = temp;
+                    
+                    sec.exercises = newEx;
                 });
             };
 
@@ -1136,6 +1139,35 @@
                     if (setsArray) freshData.progress[currentUser.id][week][exerciseId].sets = setsArray;
                     if (noteString !== undefined) freshData.progress[currentUser.id][week][exerciseId].note = noteString;
                 });
+            };
+
+            // Lógica para Saludo Dinámico y Etiquetas de Semanas (Opción 5 y 2)
+            const currentHour = new Date().getHours();
+            let greetingText = "Buen día";
+            let greetingSub = "A reventar los fierros, enfocate en la técnica.";
+            if (currentHour >= 12 && currentHour < 19) {
+                greetingText = "Buenas tardes";
+                greetingSub = "Mitad del día, a dejarlo todo en la sala.";
+            } else if (currentHour >= 19) {
+                greetingText = "Buenas noches";
+                greetingSub = "Último esfuerzo del día. Sin excusas.";
+            }
+
+            const weekLabels = {
+                1: "Acumulación",
+                2: "Intensidad",
+                3: "Sobrecarga",
+                4: "Descarga"
+            };
+
+            // Lógica para Identidad Biomecánica en Tarjetas (Opción 3)
+            const getCardStyle = (name) => {
+                const n = (name || '').toLowerCase();
+                if (n.includes('pierna') || n.includes('inferior') || n.includes('gluteo') || n.includes('cuad')) return { icon: 'fa-shoe-prints', color: 'text-emerald-500', bg: 'bg-emerald-950/40', border: 'group-hover:border-emerald-500/50', ring: 'border-emerald-500/20' };
+                if (n.includes('empuje') || n.includes('pecho') || n.includes('hombro') || n.includes('triceps')) return { icon: 'fa-arrow-up-right-dots', color: 'text-blue-500', bg: 'bg-blue-950/40', border: 'group-hover:border-blue-500/50', ring: 'border-blue-500/20' };
+                if (n.includes('traccion') || n.includes('espalda') || n.includes('biceps') || n.includes('jalon') || n.includes('dominada')) return { icon: 'fa-hand-back-fist', color: 'text-purple-500', bg: 'bg-purple-950/40', border: 'group-hover:border-purple-500/50', ring: 'border-purple-500/20' };
+                if (n.includes('full') || n.includes('cuerpo') || n.includes('completo')) return { icon: 'fa-fire-flame-curved', color: 'text-red-500', bg: 'bg-red-950/40', border: 'group-hover:border-red-500/50', ring: 'border-red-500/20' };
+                return { icon: 'fa-dumbbell', color: 'text-brand-500', bg: 'bg-dark-800', border: 'group-hover:border-brand-500/50', ring: 'border-dark-600' };
             };
 
             if (loading) return <div className="app-container flex justify-center items-center h-screen bg-dark-900 text-brand-500 text-2xl font-bold"><i className="fa-solid fa-fire fa-spin mr-3"></i> Cargando...</div>;
@@ -1265,15 +1297,8 @@
                                     <>
                                         <header className="p-4 flex items-center justify-between sticky top-0 glass-header z-10">
                                             <button onClick={() => setActiveClient(null)} className="text-brand-500 w-10 h-10 flex items-center justify-center hover:text-white transition-colors bg-dark-800 rounded-xl border border-white/5"><i className="fa-solid fa-arrow-left text-base"></i></button>
-                                            <div className="flex-1 px-3">
-                                                <EditableTitle 
-                                                    initialValue={activeClient.name}
-                                                    placeholder="Nombre del alumno..."
-                                                    className="font-bold text-base text-white bg-transparent outline-none w-full border-b border-transparent focus:border-brand-500 transition-colors"
-                                                    onSave={(val) => updateClientName(activeClient.id, val)}
-                                                />
-                                            </div>
-                                            <button onClick={() => deleteClient(activeClient.id)} className="text-gray-500 hover:text-red-400 p-2 transition-colors" title="Eliminar alumno"><i className="fa-solid fa-trash-can"></i></button>
+                                            <h2 className="font-bold text-base text-white tracking-wide">{activeClient.name}</h2>
+                                            <div className="w-10"></div>
                                         </header>
                                         
                                         <div className="p-4">
@@ -1311,7 +1336,6 @@
                                         <button onClick={() => setView('home')} className="text-xs font-bold text-gray-400 bg-dark-800 px-4 py-2 rounded-xl hover:text-white transition-colors border border-white/5">Salir</button>
                                     </header>
                                     <div className="p-5 space-y-4">
-                                        {/* Dashboard y Estadísticas Rápidas */}
                                         <div className="grid grid-cols-2 gap-3 mb-2">
                                             <div className="glass-panel p-4 rounded-2xl border border-white/5 text-center">
                                                 <p className="text-2xl font-black text-brand-500">{globalData.clients?.length || 0}</p>
@@ -1330,19 +1354,44 @@
                                             <button onClick={addClient} className="bg-brand-500 rounded-xl w-11 h-11 flex items-center justify-center text-white hover:bg-brand-600 transition-colors shadow-md shadow-brand-500/30 font-bold"><i className="fa-solid fa-plus"></i></button>
                                         </div>
 
-                                        <h3 className="font-black text-xs text-gray-400 uppercase tracking-widest mb-2">Listado de Alumnos</h3>
+                                        <h3 className="font-black text-xs text-gray-400 uppercase tracking-widest mb-2">Gestión de Alumnos</h3>
                                         {globalData.clients?.map(client => {
                                             const routinesCount = (globalData.routines?.[client.id] || []).length;
                                             return (
-                                                <div key={client.id} onClick={() => setActiveClient(client)} className="glass-panel p-4 rounded-2xl flex justify-between items-center cursor-pointer hover:border-brand-500/50 transition-all shadow-md border border-white/5">
-                                                    <div>
+                                                <div key={client.id} onClick={() => setActiveClient(client)} className="glass-panel p-4 rounded-2xl flex justify-between items-center cursor-pointer hover:border-brand-500/50 transition-all shadow-md border border-white/5 group">
+                                                    <div className="flex-1">
                                                         <p className="font-bold text-base text-white">{client.name}</p>
                                                         <div className="flex items-center gap-3 mt-1">
                                                             <p className="text-xs text-brand-500 font-semibold"><i className="fa-solid fa-key mr-1"></i> PIN: {client.pin}</p>
                                                             <span className="text-xs text-gray-400">• {routinesCount} {routinesCount === 1 ? 'rutina' : 'rutinas'}</span>
                                                         </div>
                                                     </div>
-                                                    <i className="fa-solid fa-chevron-right text-gray-500 text-sm"></i>
+                                                    <div className="flex items-center gap-1 ml-2">
+                                                        <button 
+                                                            type="button" 
+                                                            onClick={(e) => { 
+                                                                e.stopPropagation(); 
+                                                                const nuevoNombre = prompt('Editar nombre del alumno:', client.name); 
+                                                                if(nuevoNombre) updateClientName(client.id, nuevoNombre); 
+                                                            }} 
+                                                            className="w-9 h-9 flex items-center justify-center rounded-xl text-gray-400 hover:text-brand-500 hover:bg-dark-800 transition-colors border border-transparent hover:border-white/5"
+                                                            title="Editar Nombre"
+                                                        >
+                                                            <i className="fa-solid fa-pen text-sm"></i>
+                                                        </button>
+                                                        <button 
+                                                            type="button" 
+                                                            onClick={(e) => { 
+                                                                e.stopPropagation(); 
+                                                                deleteClient(client.id); 
+                                                            }} 
+                                                            className="w-9 h-9 flex items-center justify-center rounded-xl text-gray-400 hover:text-red-400 hover:bg-dark-800 transition-colors border border-transparent hover:border-white/5"
+                                                            title="Eliminar Alumno"
+                                                        >
+                                                            <i className="fa-solid fa-trash-can text-sm"></i>
+                                                        </button>
+                                                        <i className="fa-solid fa-chevron-right text-gray-600 text-sm ml-1"></i>
+                                                    </div>
                                                 </div>
                                             );
                                         })}
@@ -1368,32 +1417,41 @@
                             </header>
 
                             <div className="p-5">
-                                <div className="mb-6 bg-dark-800/60 p-4 rounded-2xl border border-white/5">
-                                    <h2 className="text-xl font-black text-white">Hola, {currentUser?.name || 'Atleta'}</h2>
-                                    <p className="text-xs text-gray-400 mt-0.5">Seleccioná tu semana y a darlo todo.</p>
+                                {/* CAMBIO VISTA ALUMNO 1: Banner Dinámico */}
+                                <div className="mb-6 p-5 rounded-3xl border border-white/10 shadow-2xl relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #131318 0%, #0a0a0c 100%)' }}>
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-brand-500/10 rounded-full blur-3xl -mr-10 -mt-10"></div>
+                                    <h2 className="text-2xl font-black text-white relative z-10">{greetingText}, <span className="text-brand-500">{currentUser?.name || 'Atleta'}</span></h2>
+                                    <p className="text-xs text-gray-400 mt-1.5 relative z-10">{greetingSub}</p>
                                 </div>
 
-                                <h3 className="font-black text-xs text-gray-400 uppercase tracking-widest mb-3">Seleccionar semana</h3>
-                                <div className="flex bg-dark-800/90 rounded-2xl p-1.5 mb-8 border border-white/5 shadow-inner">
+                                {/* CAMBIO VISTA ALUMNO 2: Selector Semanal con Periodización */}
+                                <h3 className="font-black text-xs text-gray-400 uppercase tracking-widest mb-3">Periodización del Mesociclo</h3>
+                                <div className="flex bg-dark-800/90 rounded-2xl p-1.5 mb-8 border border-white/5 shadow-inner gap-1">
                                     {[1, 2, 3, 4].map(num => (
-                                        <button key={num} onClick={() => setActiveWeek(num)} className={`flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all ${activeWeek === num ? 'bg-brand-500 text-white shadow-lg shadow-brand-500/30' : 'text-gray-400 hover:text-white'}`}>Sem. {num}</button>
+                                        <button key={num} onClick={() => setActiveWeek(num)} className={`flex-1 py-2 flex flex-col items-center justify-center rounded-xl transition-all ${activeWeek === num ? 'bg-brand-500 text-white shadow-lg shadow-brand-500/30' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
+                                            <span className="text-sm font-black tracking-wider leading-none">S{num}</span>
+                                            <span className={`text-[8px] font-bold uppercase tracking-wider mt-1 ${activeWeek === num ? 'text-white/80' : 'text-gray-500'}`}>{weekLabels[num]}</span>
+                                        </button>
                                     ))}
                                 </div>
 
+                                {/* CAMBIO VISTA ALUMNO 3: Tarjetas con Identidad Biomecánica */}
                                 <h3 className="font-black text-xs text-gray-400 uppercase tracking-widest mb-4">Tus plantillas</h3>
                                 <div className="space-y-4">
                                     {(globalData.routines[currentUser.id] || []).map(day => {
                                         const totalEx = day.sections ? day.sections.reduce((acc, s) => acc + (s.exercises?.length || 0), 0) : (day.exercises?.length || 0);
+                                        const style = getCardStyle(day.name);
+                                        
                                         return (
-                                            <div key={day.id} onClick={() => {setActiveDayId(day.id); setIsTrainingStarted(false); setView('cliente_entrenamiento');}} className="glass-panel p-4 rounded-2xl flex items-center gap-4 cursor-pointer group hover:border-brand-500/50 transition-all shadow-md border border-white/5">
-                                                <div className="w-14 h-14 bg-dark-800 rounded-2xl shrink-0 flex items-center justify-center text-brand-500 border border-dark-600 group-hover:scale-105 transition-transform shadow-inner">
-                                                    <i className="fa-solid fa-dumbbell text-xl"></i>
+                                            <div key={day.id} onClick={() => {setActiveDayId(day.id); setIsTrainingStarted(false); setView('cliente_entrenamiento');}} className={`glass-panel p-4 rounded-2xl flex items-center gap-4 cursor-pointer group transition-all shadow-md border border-white/5 ${style.border}`}>
+                                                <div className={`w-14 h-14 rounded-2xl shrink-0 flex items-center justify-center border group-hover:scale-105 transition-transform shadow-inner ${style.bg} ${style.color} ${style.ring}`}>
+                                                    <i className={`fa-solid ${style.icon} text-xl`}></i>
                                                 </div>
                                                 <div className="flex-1 overflow-hidden">
                                                     <h4 className="font-bold text-base text-white truncate lowercase">{day.name}</h4>
                                                     <p className="text-xs text-gray-400 truncate mt-0.5">{totalEx} ejercicios programados</p>
                                                 </div>
-                                                <i className="fa-solid fa-chevron-right text-gray-600 text-xs pr-1"></i>
+                                                <i className={`fa-solid fa-chevron-right text-xs pr-1 opacity-50 group-hover:opacity-100 transition-opacity ${style.color}`}></i>
                                             </div>
                                         );
                                     })}
